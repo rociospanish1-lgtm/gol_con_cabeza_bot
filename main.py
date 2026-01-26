@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context): 
     await update.message.reply_text(
         "🤖 Bot activo.\n\nPróximamente: análisis y alertas de fútbol ⚽"
     )
