@@ -1,16 +1,28 @@
-from telegram.ext import ApplicationBuilder, CommandHandler
 import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = os.environ.get("BOT_TOKEN")
-
-async def start(update, context):
-    await update.message.reply_text("🤖 Bot activo y funcionando")
+# Función que responde a /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 ¡Hola! Soy el bot Gol con Cabeza ⚽🧠\n\n"
+        "Estoy funcionando correctamente 🚀"
+    )
 
 def main():
+    # Leer el token desde la variable de entorno
+    TOKEN = os.getenv("BOT_TOKEN")
+
+    if not TOKEN:
+        raise ValueError("❌ BOT_TOKEN no está definido en las variables de entorno")
+
+    # Crear la aplicación
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Registrar el comando /start
     app.add_handler(CommandHandler("start", start))
 
+    print("🤖 Bot iniciado correctamente")
     app.run_polling()
 
 if __name__ == "__main__":
