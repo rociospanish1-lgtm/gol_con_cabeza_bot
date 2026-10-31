@@ -3,6 +3,8 @@
 Los nombres llevan el prefijo [DEMO] y no corresponden a empresas reales.
 Pasan por el mismo análisis y puntuación que los datos reales.
 """
+from datetime import date, timedelta
+
 from . import db
 from .analisis import analizar_resenas, auditar_html
 from .puntuacion import puntuar
@@ -35,6 +37,7 @@ EJEMPLOS = [
 
 
 def cargar() -> int:
+    db.borrar_demo()  # evita duplicar el historial si se carga dos veces
     for i, e in enumerate(EJEMPLOS):
         auditoria = auditar_html(e["web"]) if e["web"] else None
         quejas = analizar_resenas(e["resenas"])
@@ -50,4 +53,23 @@ def cargar() -> int:
             "motivos": r["motivos"], "gancho": r["gancho"], "puntuacion": r["puntuacion"],
             "nivel": r["nivel"], "demo": 1,
         })
+    _historial_ejemplo()
     return len(EJEMPLOS)
+
+
+def _historial_ejemplo() -> None:
+    """Contactos de ejemplo para ver cómo queda el seguimiento."""
+    hoy = date.today()
+    ids = {e["clave"]: e["id"] for e in db.listar() if e["demo"]}
+    dia = lambda n: (hoy - timedelta(days=n)).isoformat()  # noqa: E731
+    db.anadir_contacto(ids["demo:0"], fecha=dia(4), hora="10:15", canal="Llamada",
+                       resultado="No contestan")
+    db.anadir_contacto(ids["demo:0"], fecha=dia(2), hora="17:40", canal="Llamada",
+                       resultado="Contestó recepción: llamar más tarde", persona="Recepción",
+                       notas="La responsable está por las mañanas", proximo_seguimiento=hoy.isoformat())
+    db.anadir_contacto(ids["demo:1"], fecha=dia(1), hora="12:05", canal="Instagram",
+                       resultado="Hablé con la responsable: interesada", persona="Responsable",
+                       notas="Pide ejemplo de conversación por WhatsApp")
+    ficha = db.obtener(ids["demo:0"])
+    db.actualizar_ficha(ids["demo:0"], estado=ficha["estado"], contacto_cargo="Dueña",
+                        mejor_horario="Mañanas, 10-13h", proximo_seguimiento=hoy.isoformat())

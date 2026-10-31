@@ -46,13 +46,27 @@ def main(argv=None) -> int:
 
 
 COLUMNAS_CSV = ["puntuacion", "nivel", "nombre", "telefono", "web", "direccion", "valoracion",
-                "num_resenas", "motivos", "gancho", "estado", "notas", "maps_url"]
+                "num_resenas", "motivos", "gancho", "estado", "contacto_nombre", "contacto_cargo",
+                "mejor_horario", "num_contactos", "primer_contacto", "segundo_contacto",
+                "ultimo_contacto", "ultimo_resultado", "proximo_seguimiento", "historial",
+                "notas", "maps_url"]
 
 
 def filas_csv(empresas):
     for e in empresas:
         fila = {c: e.get(c, "") for c in COLUMNAS_CSV}
         fila["motivos"] = " | ".join(m["texto"] for m in e["motivos"])
+        fila["proximo_seguimiento"] = db.fecha_es(e.get("proximo_seguimiento", ""))
+        contactos = e.get("contactos", [])
+        cuando = lambda c: f"{db.fecha_es(c['fecha'])} {c['hora']}"  # noqa: E731
+        fila["num_contactos"] = len(contactos)
+        fila["primer_contacto"] = cuando(contactos[0]) if contactos else ""
+        fila["segundo_contacto"] = cuando(contactos[1]) if len(contactos) > 1 else ""
+        fila["ultimo_contacto"] = cuando(contactos[-1]) if contactos else ""
+        fila["ultimo_resultado"] = contactos[-1]["resultado"] if contactos else ""
+        fila["historial"] = " | ".join(
+            f"{c['etiqueta']}: {cuando(c)} {c['canal']} - {c['resultado']}"
+            f"{' (' + c['persona'] + ')' if c['persona'] else ''}" for c in contactos)
         # Evita inyección de fórmulas al abrir el CSV en Excel
         for c, v in fila.items():
             if isinstance(v, str) and v[:1] in ("=", "+", "-", "@"):

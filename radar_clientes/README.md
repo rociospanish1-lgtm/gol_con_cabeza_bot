@@ -66,10 +66,31 @@ python -m radar_clientes escanear --ciudad "Dos Hermanas"
 python -m radar_clientes exportar leads.csv --minimo 35
 ```
 
-En el panel puedes lanzar escaneos, filtrar por nivel/estado/zona, marcar cada
-empresa (nuevo → contactado → reunión → propuesta → cliente / descartado) y
-apuntar notas. Volver a escanear actualiza la puntuación sin borrar tu
-seguimiento. Los datos se guardan en `radar_clientes/radar.db`.
+En el panel puedes lanzar escaneos, filtrar por nivel/estado/zona y llevar el
+seguimiento comercial de cada empresa. Volver a escanear actualiza la
+puntuación sin borrar tu seguimiento. Los datos se guardan en
+`radar_clientes/radar.db`.
+
+### Seguimiento de cada empresa
+
+**Ficha** (columna derecha): estado (nuevo → contactado → reunión → propuesta →
+cliente / descartado), persona de contacto y cargo, mejor horario para llamar,
+fecha del próximo seguimiento y notas generales.
+
+**Historial de contactos** (debajo de cada empresa): cada intento queda
+registrado como *1º contacto*, *2º contacto*, *Seguimiento 1*, *Seguimiento 2*…
+con fecha, hora, canal (llamada, WhatsApp, Instagram, LinkedIn, visita, email),
+resultado, con quién hablaste y notas. La columna **¿Contestaron?** se rellena
+sola según el resultado.
+
+Automatismos:
+- El primer contacto pasa la empresa de *nuevo* a *contactado*; "Reunión agendada" la pasa a *reunión*.
+- Si no indicas próximo seguimiento y no hay respuesta definitiva, se programa a 2 días.
+- El contador **Seguimientos hoy** y el filtro "Solo seguimientos de hoy" muestran
+  las empresas que tocan hoy o están atrasadas (excepto clientes y descartadas).
+
+El CSV exportado incluye primer y segundo contacto, último contacto y resultado,
+próximo seguimiento y el historial completo.
 
 ## Uso de los datos (léelo antes de contactar)
 

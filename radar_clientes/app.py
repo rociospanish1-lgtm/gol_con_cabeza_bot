@@ -5,6 +5,7 @@ import csv
 import io
 import secrets
 import threading
+from datetime import datetime
 
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
 
@@ -17,6 +18,7 @@ _cerrojo = threading.Lock()
 def crear_app() -> Flask:
     app = Flask(__name__)
     app.secret_key = secrets.token_hex(32)
+    app.add_template_filter(db.fecha_es, "fecha_es")
 
     @app.before_request
     def proteger_formularios():
@@ -30,8 +32,13 @@ def crear_app() -> Flask:
     def inicio():
         f = {k: request.args.get(k, "") for k in ("nivel", "estado", "texto", "ciudad")}
         minimo = request.args.get("minimo", "0")
-        empresas = db.listar(minimo=int(minimo) if minimo.isdigit() else 0, **f)
+        pendientes = request.args.get("pendientes") == "1"
+        empresas = db.listar(minimo=int(minimo) if minimo.isdigit() else 0, pendientes=pendientes, **f)
+        ahora = datetime.now()
         return render_template("panel.html", empresas=empresas, filtros=f, minimo=minimo,
+                               pendientes=pendientes, hoy=ahora.date().isoformat(),
+                               hora=ahora.strftime("%H:%M"), canales=db.CANALES,
+                               resultados=db.RESULTADOS,
                                estados=db.ESTADOS, resumen=db.resumen(), csrf=session["csrf"],
                                claves={"google": bool(config.GOOGLE_PLACES_API_KEY),
                                        "adzuna": bool(config.ADZUNA_APP_ID)},
@@ -41,11 +48,34 @@ def crear_app() -> Flask:
     def seguimiento(id_: int):
         if not db.obtener(id_):
             abort(404)
+        campos = ("estado", "notas", "contacto_nombre", "contacto_cargo", "mejor_horario",
+                  "proximo_seguimiento")
         try:
-            db.actualizar_seguimiento(id_, request.form.get("estado", ""), request.form.get("notas", ""))
-        except ValueError:
-            abort(400)
-        return redirect(request.referrer or url_for("inicio"))
+            db.actualizar_ficha(id_, **{c: request.form.get(c, "") for c in campos})
+        except ValueError as e:
+            abort(400, str(e))
+        return _volver(id_)
+
+    @app.post("/empresa/<int:id_>/contacto")
+    def nuevo_contacto(id_: int):
+        campos = ("fecha", "hora", "canal", "resultado", "persona", "notas", "proximo_seguimiento")
+        try:
+            db.anadir_contacto(id_, **{c: request.form.get(c, "") for c in campos})
+        except ValueError as e:
+            abort(400, str(e))
+        return _volver(id_)
+
+    @app.post("/contacto/<int:contacto_id>/borrar")
+    def borrar_contacto(contacto_id: int):
+        db.borrar_contacto(contacto_id)
+        return _volver(request.form.get("empresa", type=int))
+
+    def _volver(id_: int | None):
+        """Vuelve al panel con los mismos filtros y a la altura de la empresa."""
+        destino = request.referrer or url_for("inicio")
+        if not destino.startswith(request.host_url):
+            destino = url_for("inicio")
+        return redirect(destino.split("#")[0] + (f"#empresa-{id_}" if id_ else ""))
 
     @app.post("/escanear")
     def lanzar_escaneo():

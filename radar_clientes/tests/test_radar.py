@@ -79,3 +79,84 @@ def test_csv_neutraliza_formulas():
     from radar_clientes.__main__ import filas_csv
     fila = next(filas_csv([{"nombre": "=HYPERLINK(\"x\")", "motivos": []}]))
     assert fila["nombre"].startswith("'=")
+
+
+def _empresa(clave="x:1"):
+    db.guardar({"clave": clave, "nombre": "Clínica X", "puntuacion": 50, "nivel": "Templado",
+                "fuentes": [], "senales": {}, "motivos": []})
+    return next(e for e in db.listar() if e["clave"] == clave)["id"]
+
+
+def test_historial_numera_y_actualiza_estado():
+    id_ = _empresa()
+    db.anadir_contacto(id_, fecha="2026-11-02", hora="10:00", canal="Llamada", resultado="No contestan")
+    e = db.listar()[0]
+    assert e["estado"] == "contactado" and e["proximo_seguimiento"] == "2026-11-04"
+    db.anadir_contacto(id_, fecha="2026-11-04", hora="17:30", canal="WhatsApp",
+                       resultado="Hablé con la responsable: interesada", persona="Ana")
+    db.anadir_contacto(id_, fecha="2026-11-06", hora="11:00", canal="Llamada", resultado="Reunión agendada")
+    e = db.listar()[0]
+    assert [c["etiqueta"] for c in e["contactos"]] == ["1º contacto", "2º contacto", "Seguimiento 1"]
+    assert [c["contestaron"] for c in e["contactos"]] == [False, True, True]
+    assert e["estado"] == "reunión" and e["proximo_seguimiento"] == ""
+
+
+@pytest.mark.parametrize("cambio", [{"hora": "25:00"}, {"fecha": "31/12/2026"}, {"canal": "Fax"},
+                                    {"resultado": "otro"}, {"fecha": ""}])
+def test_contacto_rechaza_datos_invalidos(cambio):
+    id_ = _empresa()
+    datos = {"fecha": "2026-11-02", "hora": "10:00", "canal": "Llamada", "resultado": "No contestan", **cambio}
+    with pytest.raises(ValueError):
+        db.anadir_contacto(id_, **datos)
+
+
+def test_pendientes_de_hoy():
+    from datetime import date, timedelta
+    a, b = _empresa("x:a"), _empresa("x:b")
+    db.actualizar_ficha(a, estado="contactado", proximo_seguimiento=(date.today() - timedelta(days=1)).isoformat())
+    db.actualizar_ficha(b, estado="contactado", proximo_seguimiento=(date.today() + timedelta(days=3)).isoformat())
+    assert [e["id"] for e in db.listar(pendientes=True)] == [a]
+    assert db.resumen()["pendientes"] == 1
+    db.actualizar_ficha(a, estado="descartado", proximo_seguimiento=date.today().isoformat())
+    assert db.listar(pendientes=True) == []
+
+
+def test_reescanear_no_borra_ficha():
+    id_ = _empresa()
+    db.actualizar_ficha(id_, estado="contactado", contacto_nombre="Ana", mejor_horario="mañanas")
+    _empresa()
+    e = db.obtener(id_)
+    assert (e["contacto_nombre"], e["mejor_horario"]) == ("Ana", "mañanas")
+
+
+def test_migra_base_de_datos_antigua():
+    import sqlite3
+    con = sqlite3.connect(config.DB_PATH)
+    con.execute("CREATE TABLE empresas (id INTEGER PRIMARY KEY AUTOINCREMENT, clave TEXT UNIQUE NOT NULL, "
+                "nombre TEXT NOT NULL, sector TEXT, ciudad TEXT, direccion TEXT, telefono TEXT, web TEXT, "
+                "maps_url TEXT, valoracion REAL, num_resenas INTEGER, fuentes TEXT DEFAULT '[]', "
+                "senales TEXT DEFAULT '{}', motivos TEXT DEFAULT '[]', gancho TEXT DEFAULT '', "
+                "puntuacion INTEGER DEFAULT 0, nivel TEXT DEFAULT 'Frío', estado TEXT DEFAULT 'nuevo', "
+                "notas TEXT DEFAULT '', demo INTEGER DEFAULT 0, creado TEXT, actualizado TEXT)")
+    con.execute("INSERT INTO empresas (clave, nombre) VALUES ('vieja', 'Antigua')")
+    con.commit(); con.close()
+    assert db.listar()[0]["contacto_nombre"] == ""
+
+
+def test_panel_registra_contacto_y_exporta():
+    from radar_clientes.app import crear_app
+    id_ = _empresa()
+    c = crear_app().test_client()
+    c.get("/")
+    with c.session_transaction() as s:
+        token = s["csrf"]
+    r = c.post(f"/empresa/{id_}/contacto", data={"csrf": token, "fecha": "2026-11-02", "hora": "09:30",
+                                                  "canal": "Llamada", "resultado": "No contestan"})
+    assert r.status_code == 302 and r.headers["Location"].endswith(f"#empresa-{id_}")
+    assert c.post(f"/empresa/{id_}/contacto", data={"csrf": token, "fecha": "x", "hora": "09:30",
+                                                     "canal": "Llamada", "resultado": "No contestan"}).status_code == 400
+    html = c.get("/").text
+    assert "1º contacto" in html and "Añadir contacto" in html and "2º contacto:" in html
+    csv_txt = c.get("/exportar.csv").text
+    assert "02/11/2026 09:30" in csv_txt and "1º contacto: 02/11/2026 09:30 Llamada - No contestan" in csv_txt
+    assert "02/11/2026" in html

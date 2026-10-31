@@ -33,6 +33,21 @@
   details { font-size:13px; margin-top:6px; } details q { display:block; color:var(--suave); margin:4px 0; }
   .seguimiento textarea { width:100%; height:70px; margin:6px 0; }
   .seguimiento select { width:100%; }
+  .seguimiento label { display:block; font-size:12px; color:var(--suave); margin-top:6px; }
+  .seguimiento input { width:100%; }
+  .vencido { border-color:var(--caliente); box-shadow:0 0 0 2px #fde4d8; }
+  .alerta { color:var(--caliente); font-weight:600; font-size:13px; }
+  .historial { grid-column:1 / -1; border-top:1px solid var(--borde); padding-top:10px; }
+  .historial h4 { margin:0 0 6px; font-size:14px; }
+  table.contactos { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:8px; }
+  table.contactos th { text-align:left; color:var(--suave); font-weight:500; border-bottom:1px solid var(--borde); padding:4px 6px; }
+  table.contactos td { border-bottom:1px solid var(--borde); padding:5px 6px; vertical-align:top; }
+  .si { color:#15803d; font-weight:600; } .no { color:var(--caliente); font-weight:600; }
+  .x { background:none; color:var(--suave); border:none; padding:0 4px; }
+  form.nuevo-contacto { display:flex; flex-wrap:wrap; gap:6px; align-items:end; }
+  form.nuevo-contacto label { font-size:12px; color:var(--suave); display:flex; flex-direction:column; gap:2px; }
+  form.nuevo-contacto input[name=notas] { width:220px; }
+  a.kpi { color:inherit; text-decoration:none; }
   pre#log { background:#111; color:#ddd; padding:10px; border-radius:8px; max-height:180px; overflow:auto; display:none; }
   @media (max-width:800px) { .lead { grid-template-columns:1fr; } }
 </style>
@@ -43,6 +58,7 @@
   <div class="kpis">
     <div class="kpi"><b>{{ resumen.get('Caliente', 0) }}</b><span>Calientes</span></div>
     <div class="kpi"><b>{{ resumen.get('Templado', 0) }}</b><span>Templados</span></div>
+    <a class="kpi" href="/?pendientes=1" title="Ver seguimientos de hoy y atrasados"><b style="color:var(--caliente)">{{ resumen.get('pendientes', 0) }}</b><span>Seguimientos hoy</span></a>
     <div class="kpi"><b>{{ resumen.get('total', 0) }}</b><span>Total</span></div>
   </div>
 </header>
@@ -76,14 +92,16 @@
     <input name="ciudad" placeholder="Ciudad" value="{{ filtros.ciudad }}">
     <input name="texto" placeholder="Buscar nombre o zona" value="{{ filtros.texto }}">
     <input name="minimo" type="number" min="0" max="100" style="width:90px" placeholder="Mín." value="{{ minimo if minimo != '0' }}">
+    <label><input type="checkbox" name="pendientes" value="1" {% if pendientes %}checked{% endif %}> Solo seguimientos de hoy</label>
     <button type="submit">Filtrar</button>
   </form>
 
   {% for e in empresas %}
-  <article class="lead">
+  <article class="lead{% if e.seguimiento_vencido %} vencido{% endif %}" id="empresa-{{ e.id }}">
     <div><div class="nota">{{ e.puntuacion }}</div><div style="text-align:center"><span class="nivel {{ e.nivel }}">{{ e.nivel }}</span></div></div>
     <div>
       <h3>{{ e.nombre }}</h3>
+      {% if e.seguimiento_vencido %}<div class="alerta">Toca seguimiento: {{ e.proximo_seguimiento|fecha_es }}</div>{% endif %}
       <div class="meta">
         {{ e.direccion }}{% if e.telefono %} · {{ e.telefono }}{% endif %}
         {% if e.valoracion %} · ★ {{ e.valoracion }} ({{ e.num_resenas }} reseñas){% endif %}
@@ -106,10 +124,50 @@
     </div>
     <form class="seguimiento" method="post" action="/empresa/{{ e.id }}">
       <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>Estado</label>
       <select name="estado">{% for s in estados %}<option {% if e.estado==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-      <textarea name="notas" placeholder="Notas: con quién hablaste, próxima acción…">{{ e.notas }}</textarea>
-      <button type="submit">Guardar</button>
+      <label>Persona de contacto</label>
+      <input name="contacto_nombre" value="{{ e.contacto_nombre }}" placeholder="Nombre">
+      <label>Cargo</label>
+      <input name="contacto_cargo" value="{{ e.contacto_cargo }}" placeholder="Dueña, gerente, recepción…">
+      <label>Mejor horario para llamar</label>
+      <input name="mejor_horario" value="{{ e.mejor_horario }}" placeholder="Ej.: martes 10-12h">
+      <label>Próximo seguimiento</label>
+      <input type="date" name="proximo_seguimiento" value="{{ e.proximo_seguimiento }}">
+      <textarea name="notas" placeholder="Notas generales: objeciones, qué software usan…">{{ e.notas }}</textarea>
+      <button type="submit">Guardar ficha</button>
     </form>
+
+    <section class="historial">
+      <h4>Historial de contactos ({{ e.contactos|length }})</h4>
+      {% if e.contactos %}
+      <table class="contactos">
+        <tr><th></th><th>Fecha</th><th>Hora</th><th>Canal</th><th>¿Contestaron?</th><th>Resultado</th><th>Con quién</th><th>Notas</th><th></th></tr>
+        {% for c in e.contactos %}
+        <tr>
+          <td><b>{{ c.etiqueta }}</b></td><td>{{ c.fecha|fecha_es }}</td><td>{{ c.hora }}</td><td>{{ c.canal }}</td>
+          <td>{% if c.contestaron %}<span class="si">Sí</span>{% else %}<span class="no">No</span>{% endif %}</td>
+          <td>{{ c.resultado }}</td><td>{{ c.persona }}</td><td>{{ c.notas }}</td>
+          <td><form method="post" action="/contacto/{{ c.id }}/borrar" onsubmit="return confirm('¿Borrar este contacto?')">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="empresa" value="{{ e.id }}">
+            <button class="x" title="Borrar">✕</button></form></td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% endif %}
+      <form class="nuevo-contacto" method="post" action="/empresa/{{ e.id }}/contacto">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <b style="align-self:center">{% set n = e.contactos|length + 1 %}{{ n ~ 'º contacto' if n <= 2 else 'Seguimiento ' ~ (n - 2) }}:</b>
+        <label>Fecha<input type="date" name="fecha" value="{{ hoy }}" required></label>
+        <label>Hora<input type="time" name="hora" value="{{ hora }}" required></label>
+        <label>Canal<select name="canal">{% for c in canales %}<option>{{ c }}</option>{% endfor %}</select></label>
+        <label>Resultado<select name="resultado">{% for r in resultados %}<option>{{ r }}</option>{% endfor %}</select></label>
+        <label>Con quién<input name="persona" placeholder="Nombre / cargo" style="width:130px"></label>
+        <label>Notas<input name="notas" placeholder="Qué te dijeron"></label>
+        <label>Próximo seguimiento<input type="date" name="proximo_seguimiento" title="Si lo dejas vacío y no hay respuesta, se pone a 2 días"></label>
+        <button type="submit">Añadir contacto</button>
+      </form>
+    </section>
   </article>
   {% else %}
   <p>No hay empresas todavía. Pulsa <b>Escanear</b> o ejecuta <code>python -m radar_clientes demo</code> para ver un ejemplo.</p>
