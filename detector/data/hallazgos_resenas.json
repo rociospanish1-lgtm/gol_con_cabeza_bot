@@ -1,0 +1,152 @@
+{
+ "438154870903819576": {
+  "senales": [],
+  "responde_negativas": "si",
+  "nota": "Responde el 100% de las reseñas recientes, siempre en tandas semanales (misma hora) => ya tienen proceso o herramienta. Sin quejas de atención en las 20 últimas.",
+  "gancho": "Volumen enorme (2.400 reseñas = miles de citas al año). Ángulo: recordatorios y reactivación de clientas de repaso (micropigmentación anual)."
+ },
+ "14925396036139457107": {
+  "senales": [
+   "esperas",
+   "seguimiento",
+   "leads_ads"
+  ],
+  "responde_negativas": "si",
+  "nota": "Quejas de esperas de 1-3 h 'se les olvida avisar de imprevistos' (jul 2026). 'Me dijeron que se pondría en contacto conmigo... a día de hoy no ha ocurrido' (jun 2026). Captan leads con promos de Instagram y los llaman por teléfono.",
+  "gancho": "Avisos automáticos de retraso por WhatsApp + seguimiento automático de leads de sus campañas de Instagram."
+ },
+ "12255982835277415407": {
+  "senales": [
+   "telefono",
+   "seguimiento",
+   "no_responde_resenas"
+  ],
+  "responde_negativas": "parcial",
+  "nota": "Reseña 'Llamo muchas veces y no contestan'. Respuesta de la dueña: 'si estamos con pacientes no interrumpimos cogiendo llamadas'. Otra: 'me dijo que me mandaría un correo y después de más de 1 mes sigo esperando' (jul 2026). No responde a la mayoría de reseñas positivas recientes.",
+  "gancho": "Ella misma admite por escrito que no coge el teléfono mientras trata pacientes. Agente que contesta y agenda mientras ella trabaja."
+ },
+ "10314640575927779687": {
+  "senales": [
+   "mensajes_sin_respuesta",
+   "fuera_horario",
+   "seguimiento"
+  ],
+  "responde_negativas": "parcial",
+  "nota": "'Mensajes donde no se me contesta, pasan las semanas y solo darme largas'; 'te llamé y me colgaste porque estabas muy ocupada'. Fin de semana sin canal: 'al no tener ningún contacto solo el de la clínica y al encontrarse cerrada'.",
+  "gancho": "Canal 24/7 para postratamiento: el paciente escribe un sábado y recibe respuesta y protocolo; los casos urgentes se escalan al médico."
+ },
+ "5593801801999878227": {
+  "senales": [
+   "telefono",
+   "whatsapp_sin_respuesta",
+   "seguimiento",
+   "citas_anuladas"
+  ],
+  "responde_negativas": "no (2 negativas recientes sin respuesta)",
+  "nota": "Feb 2026: 'llamé... la recepcionista me informó que se pondrían en contacto. Pasaron los días... envié un WhatsApp que tampoco fue respondido'. 2025: 'sigo esperando contestación a pesar de insistir por WhatsApp y llamadas' (tratamiento de 600 €). Citas aplazadas 'por falta de personal'.",
+  "gancho": "Han perdido un tratamiento capilar porque nadie hizo seguimiento de unas analíticas. Agente que contesta WhatsApp al momento y deja programado el seguimiento."
+ },
+ "18258087928670375997": {
+  "senales": [
+   "esperas",
+   "seguimiento"
+  ],
+  "responde_negativas": "si (plantilla)",
+  "nota": "Pertenece a un grupo ('antes Zurich, ahora Londres', 'la Central'). Respuestas con plantilla. 'Me dijeron que me llamarían... dos meses y nada'.",
+  "gancho": "Cadena: la decisión es central. Prioridad baja."
+ },
+ "4982423742845428998": {
+  "senales": [
+   "instagram_dm",
+   "esperas",
+   "gestion_agenda"
+  ],
+  "responde_negativas": "parcial",
+  "nota": "Jul 2026: cita perdida por Instagram, nadie confirmó el horario ni pidió el teléfono. Su propia respuesta: 'gestionamos diariamente numerosas consultas y citas a través de Instagram'. Esperas de 1 h 45 min, 8 personas en sala, historia clínica no encontrada.",
+  "gancho": "Gestionan las citas a mano por mensajes de Instagram y ya les ha costado una clienta y una reseña de 1 estrella. Agente en Instagram que ofrece hueco, confirma, pide el teléfono y lo anota en la agenda."
+ },
+ "11994225307591619669": {
+  "senales": [
+   "esperas",
+   "whatsapp_descoordinado",
+   "telefono",
+   "cambios_cita"
+  ],
+  "responde_negativas": "si",
+  "nota": "Jun 2026: tras darle cita le escriben por WhatsApp preguntando si quiere información y, después de la consulta, otro WhatsApp diciendo 'aquí le esperamos': 'una falta de control total'. Ene 2026: 1 h 30 min de espera sin aviso. Nov 2025: cita cambiada 15 minutos antes. 'Nadie me coge el teléfono' para recordar la cita. Lista de espera de unos 4 meses para valorar liposucción.",
+  "gancho": "Ya mandan WhatsApp, pero a mano y sin enlazarlo con la agenda: escriben a pacientes que ya están citados o que ya han venido. Agente conectado a la agenda + aviso de retrasos."
+ },
+ "13637293825067862412": {
+  "senales": [
+   "sin_web",
+   "no_responde_resenas_recientes"
+  ],
+  "responde_negativas": "n/a (no tiene negativas)",
+  "nota": "5,0 con 283 reseñas, cero negativas. En Maps no tiene web: el enlace va a Instagram. Ha dejado de responder reseñas recientes (jun 2026). La gestiona la propia dueña.",
+  "gancho": "Toda la captación pasa por mensajes de Instagram y depende de una sola persona. Agente en Instagram/WhatsApp que conteste y reserve."
+ },
+ "4850861127642959549": {
+  "senales": [
+   "cerrada_o_cadena"
+  ],
+  "responde_negativas": "no",
+  "nota": "Cadena con sede en Madrid. Las reseñas de 2024 dicen que la clínica de Sevilla cerró. Valoración 3,0.",
+  "gancho": "DESCARTAR"
+ },
+ "3491013054796884662": {
+  "senales": [
+   "telefono_trato"
+  ],
+  "responde_negativas": "si",
+  "nota": "5,0, una sola negativa reciente que se queja del trato por teléfono (abr 2026). Ya confirman las citas 24 h antes (lo dice una clienta). Responde todas las reseñas en tandas mensuales.",
+  "gancho": "Bastante organizada. Ángulo: reactivar a clientas de bonos que terminan (Indiba, cavitación)."
+ },
+ "584823107259015886": {
+  "senales": [
+   "sin_web",
+   "dm_sin_respuesta",
+   "doctor_un_dia_semana"
+  ],
+  "responde_negativas": "si",
+  "nota": "Captan por Instagram (influencers). 'La doctora solo va una vez a la semana': citas que caducan sin reprogramar. 'Me dejaron en visto'. En Maps no tiene web. Tiene otra sede en Los Palacios.",
+  "gancho": "Dos sedes y la doctora solo pasa consulta un día a la semana: cada cita perdida cuesta una semana. Agente que gestione lista de espera y huecos libres entre las dos sedes."
+ },
+ "11974996317273371316": {
+  "senales": [
+   "sin_web"
+  ],
+  "responde_negativas": "si",
+  "nota": "4,9 con 106 reseñas. En Maps no tiene web, solo Facebook. Sin quejas de atención. Mezcla estética y uñas.",
+  "gancho": "Sin web ni reserva online. Ángulo de entrada: reserva automática por WhatsApp."
+ },
+ "3817115646703045672": {
+  "senales": [
+   "whatsapp_descoordinado",
+   "esperas",
+   "leads_ads",
+   "gestion_agenda"
+  ],
+  "responde_negativas": "si (tono defensivo)",
+  "nota": "'Llamé por teléfono y me escribieron por WhatsApp... al llegar nadie me había reservado la cita ni estaba apuntada'; '5 chicas en recepción'. 1 h 30 min de espera con cita previa. Captan con ofertas de Instagram (ácido poliláctico a 150 €). Respuestas a reseñas con tono defensivo ('jeje').",
+  "gancho": "Las ofertas de Instagram traen clientes, pero las citas se pierden entre llamadas y WhatsApp. Agente que recoge el lead del anuncio, reserva y confirma."
+ },
+ "6008942454074279927": {
+  "senales": [
+   "sin_web",
+   "no_responde_resenas",
+   "abandono"
+  ],
+  "responde_negativas": "no (0 respuestas)",
+  "nota": "No responde ninguna reseña. En Maps no tiene web. Las reseñas citan cierres sin aviso (Corporación Capilar, 2023). Posible negocio a la deriva.",
+  "gancho": "Riesgo alto de que no pague. Prioridad baja."
+ },
+ "11088173246841477": {
+  "senales": [
+   "info_telefono_erronea",
+   "seguimiento"
+  ],
+  "responde_negativas": "si (en tandas, se ponen al día con reseñas antiguas en sep 2026)",
+  "nota": "Jun 2026: por teléfono le dijeron que ponían Ellansé, la paciente viajó desde Cádiz y en la cita le dicen que no lo tienen. Sep 2026: responden de golpe reseñas de 2024 => acaban de empezar a cuidar la reputación (¿nueva persona o agencia de marketing?).",
+  "gancho": "La recepción da información errónea sobre tratamientos. Agente con el catálogo real de tratamientos y precios que no se equivoca. Que acaben de empezar a cuidar la reputación indica que ahora están invirtiendo."
+ }
+}
