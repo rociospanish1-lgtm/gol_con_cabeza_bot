@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar de clientes · Agencia de Agentes IA</title>
+<style>
+  /* Cambia estos colores por los de tu web */
+  :root { --fondo:#f6f5f2; --tarjeta:#fff; --texto:#1d1d1f; --suave:#6b6b70; --borde:#e4e2dd;
+          --marca:#3b4cca; --caliente:#c2410c; --templado:#b7791f; --frio:#64748b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--fondo); color:var(--texto); }
+  header { padding:20px 28px; background:var(--tarjeta); border-bottom:1px solid var(--borde); display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+  h1 { margin:0; font-size:20px; } h1 small { color:var(--suave); font-weight:400; }
+  main { padding:20px 28px; max-width:1300px; margin:auto; }
+  .kpis { display:flex; gap:12px; }
+  .kpi { background:var(--fondo); border-radius:10px; padding:8px 14px; min-width:90px; }
+  .kpi b { display:block; font-size:22px; } .kpi span { color:var(--suave); font-size:12px; }
+  .aviso { background:#fff7e6; border:1px solid #f3d9a4; padding:10px 14px; border-radius:10px; margin-bottom:14px; }
+  form.filtros, form.escaneo { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  input, select, textarea, button { font:inherit; padding:7px 10px; border:1px solid var(--borde); border-radius:8px; background:#fff; }
+  button { background:var(--marca); color:#fff; border:none; cursor:pointer; }
+  button.sec { background:#fff; color:var(--texto); border:1px solid var(--borde); }
+  .lead { background:var(--tarjeta); border:1px solid var(--borde); border-radius:12px; padding:16px; margin-bottom:12px; display:grid; grid-template-columns:70px 1fr 260px; gap:16px; }
+  .nota { font-size:28px; font-weight:700; text-align:center; }
+  .nivel { display:inline-block; font-size:12px; padding:2px 8px; border-radius:99px; color:#fff; }
+  .Caliente { background:var(--caliente); } .Templado { background:var(--templado); } .Frío { background:var(--frio); }
+  .lead h3 { margin:0 0 4px; font-size:16px; }
+  .meta { color:var(--suave); font-size:13px; } .meta a { color:var(--marca); }
+  ul.motivos { margin:8px 0; padding-left:0; list-style:none; font-size:14px; }
+  ul.motivos li::before { content:attr(data-p); display:inline-block; width:40px; font-weight:600; color:var(--suave); }
+  .gancho { background:var(--fondo); border-left:3px solid var(--marca); padding:8px 10px; font-size:14px; border-radius:4px; }
+  details { font-size:13px; margin-top:6px; } details q { display:block; color:var(--suave); margin:4px 0; }
+  .seguimiento textarea { width:100%; height:70px; margin:6px 0; }
+  .seguimiento select { width:100%; }
+  pre#log { background:#111; color:#ddd; padding:10px; border-radius:8px; max-height:180px; overflow:auto; display:none; }
+  @media (max-width:800px) { .lead { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Radar de clientes <small>· empresas con señales de necesitar un agente IA</small></h1>
+  <div class="kpis">
+    <div class="kpi"><b>{{ resumen.get('Caliente', 0) }}</b><span>Calientes</span></div>
+    <div class="kpi"><b>{{ resumen.get('Templado', 0) }}</b><span>Templados</span></div>
+    <div class="kpi"><b>{{ resumen.get('total', 0) }}</b><span>Total</span></div>
+  </div>
+</header>
+<main>
+  {% if not claves.google or not claves.adzuna %}
+  <div class="aviso">
+    {% if not claves.google %}Sin <b>GOOGLE_PLACES_API_KEY</b>: no se leen reseñas ni valoraciones (solo OpenStreetMap, cobertura parcial). {% endif %}
+    {% if not claves.adzuna %}Sin <b>ADZUNA_APP_ID/KEY</b>: no se detectan ofertas de recepcionista. {% endif %}
+    Consulta el README para activarlas.
+  </div>
+  {% endif %}
+  {% if resumen.demo %}
+  <div class="aviso">Estás viendo {{ resumen.demo }} empresas <b>ficticias</b> de demostración.
+    <form method="post" action="/borrar-demo" style="display:inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="sec">Borrar demo</button></form>
+  </div>
+  {% endif %}
+
+  <form class="escaneo" id="escaneo">
+    <input name="sector" value="{{ sector }}" aria-label="Sector">
+    <input name="ciudad" value="{{ ciudad }}" aria-label="Ciudad">
+    <button type="submit">Escanear</button>
+    <a href="/exportar.csv"><button type="button" class="sec">Exportar CSV</button></a>
+  </form>
+  <pre id="log"></pre>
+
+  <form class="filtros" method="get">
+    <select name="nivel"><option value="">Todos los niveles</option>
+      {% for n in ['Caliente','Templado','Frío'] %}<option {% if filtros.nivel==n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+    <select name="estado"><option value="">Todos los estados</option>
+      {% for e in estados %}<option {% if filtros.estado==e %}selected{% endif %}>{{ e }}</option>{% endfor %}</select>
+    <input name="ciudad" placeholder="Ciudad" value="{{ filtros.ciudad }}">
+    <input name="texto" placeholder="Buscar nombre o zona" value="{{ filtros.texto }}">
+    <input name="minimo" type="number" min="0" max="100" style="width:90px" placeholder="Mín." value="{{ minimo if minimo != '0' }}">
+    <button type="submit">Filtrar</button>
+  </form>
+
+  {% for e in empresas %}
+  <article class="lead">
+    <div><div class="nota">{{ e.puntuacion }}</div><div style="text-align:center"><span class="nivel {{ e.nivel }}">{{ e.nivel }}</span></div></div>
+    <div>
+      <h3>{{ e.nombre }}</h3>
+      <div class="meta">
+        {{ e.direccion }}{% if e.telefono %} · {{ e.telefono }}{% endif %}
+        {% if e.valoracion %} · ★ {{ e.valoracion }} ({{ e.num_resenas }} reseñas){% endif %}
+        {% if e.web and not e.demo %} · <a href="{{ e.web }}" target="_blank" rel="noopener noreferrer">web</a>{% endif %}
+        {% if e.maps_url %} · <a href="{{ e.maps_url }}" target="_blank" rel="noopener noreferrer">mapa</a>{% endif %}
+        · fuente: {{ e.fuentes|join(', ') }}
+      </div>
+      <ul class="motivos">
+        {% for m in e.motivos %}<li data-p="{{ '%+d'|format(m.puntos) }}">{{ m.texto }}</li>{% endfor %}
+      </ul>
+      {% if e.gancho %}<div class="gancho"><b>Primer mensaje:</b> {{ e.gancho }}</div>{% endif %}
+      {% if e.senales.quejas %}
+      <details><summary>Ver reseñas que lo justifican</summary>
+        {% for tipo, frases in e.senales.quejas.items() %}{% for f in frases %}<q>{{ f }}</q>{% endfor %}{% endfor %}
+      </details>{% endif %}
+      {% if e.senales.ofertas %}
+      <details><summary>Ver ofertas de empleo</summary>
+        {% for o in e.senales.ofertas %}<div>{{ o.fecha }} · {{ o.titulo }}{% if o.url %} · <a href="{{ o.url }}" target="_blank" rel="noopener noreferrer">ver</a>{% endif %}</div>{% endfor %}
+      </details>{% endif %}
+    </div>
+    <form class="seguimiento" method="post" action="/empresa/{{ e.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <select name="estado">{% for s in estados %}<option {% if e.estado==s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      <textarea name="notas" placeholder="Notas: con quién hablaste, próxima acción…">{{ e.notas }}</textarea>
+      <button type="submit">Guardar</button>
+    </form>
+  </article>
+  {% else %}
+  <p>No hay empresas todavía. Pulsa <b>Escanear</b> o ejecuta <code>python -m radar_clientes demo</code> para ver un ejemplo.</p>
+  {% endfor %}
+</main>
+<script>
+const form = document.getElementById('escaneo'), log = document.getElementById('log');
+form.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const datos = new FormData(form); datos.append('csrf', '{{ csrf }}');
+  const r = await fetch('/escanear', {method:'POST', body:datos});
+  const j = await r.json(); log.style.display = 'block';
+  if (!j.ok) { log.textContent = j.mensaje; return; }
+  const t = setInterval(async () => {
+    const s = await (await fetch('/escaneo')).json();
+    log.textContent = s.log.join('\n'); log.scrollTop = log.scrollHeight;
+    if (!s.activo) { clearInterval(t); setTimeout(() => location.reload(), 1200); }
+  }, 1500);
+});
+</script>
+</body>
+</html>
