@@ -22,6 +22,13 @@ def main():
     # Registrar el comando /start
     app.add_handler(CommandHandler("start", start))
 
+    # Comandos /asmr y /asmr_ayuda (creador de vídeos ASMR)
+    try:
+        import asmr_bot
+        asmr_bot.registrar(app)
+    except ImportError as e:
+        print(f"⚠️ Módulo ASMR desactivado: {e}")
+
     print("🤖 Bot iniciado correctamente")
     app.run_polling()
 
