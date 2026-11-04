@@ -1,0 +1,22 @@
+{
+  "name": "agente-whatsapp-rocio",
+  "version": "1.0.0",
+  "description": "Agente IA de WhatsApp de Rocío Pineda para atender a clínicas de estética",
+  "type": "module",
+  "private": true,
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "probar": "node src/probar.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.5.0",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "better-sqlite3": "^13.0.3",
+    "pino": "^9.0.0",
+    "qrcode": "^1.5.4"
+  }
+}
