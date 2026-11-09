@@ -126,10 +126,12 @@ def score(account: Account, web: WebSignals, reviews: ReviewSignals) -> ScoredAc
         if web.hiring:
             intent += w["intent_contratando"]
             m.append("Está contratando: señal de crecimiento o de saturación")
-    elif not account.web:
-        # Sin web: dolor casi seguro, pero menos información
+    elif account.web.strip().upper() == "NO":
+        # Sin web confirmado: dolor casi seguro, pero menos información
         intent += round(w["intent_sin_reserva_online"] * 0.7)
         m.append("Sin web: toda la captación depende del teléfono e Instagram")
+    elif not account.web:
+        m.append("Web sin revisar: falta añadir la URL para medir la intención")
 
     if reviews.pain_reviews:
         # 1 reseña = 50 %, 2 = 80 %, 3+ = 100 % del peso

@@ -55,6 +55,7 @@ Resultados en `resultados/`:
 
 Rellena el CSV a mano (ver `ejemplo_clinicas.csv`). Columnas:
 `nombre;web;telefono;direccion;categoria;valoracion;num_resenas;instagram;notas;resenas`.
+En `web` escribe la URL, `NO` si la clínica no tiene web, o déjalo vacío si aún no lo has mirado.
 En `resenas` pega las reseñas negativas de Google Maps separadas por `||`. Con 3-5 reseñas
 de 1-3 estrellas por clínica basta.
 

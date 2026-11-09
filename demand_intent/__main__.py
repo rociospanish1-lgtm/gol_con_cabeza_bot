@@ -35,9 +35,15 @@ def _read_accounts(path: str) -> list[Account]:
 
 
 def _analyze(account: Account, offline: bool):
-    if offline or not account.web:
-        web = collectors.WebSignals(url=account.web,
-                                    error="modo offline" if account.web else "sin web")
+    sin_web = account.web.strip().upper() == "NO"
+    if offline or not account.web or sin_web:
+        if sin_web:
+            error = "sin web"
+        elif not account.web:
+            error = "web sin revisar"
+        else:
+            error = "modo offline"
+        web = collectors.WebSignals(url="" if sin_web else account.web, error=error)
     else:
         web = collectors.scan_website(account.web)
     reviews = collectors.analyze_reviews(account.resenas)
