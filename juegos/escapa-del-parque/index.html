@@ -184,6 +184,12 @@ const PHASES = [
   },
 ];
 
+/* guardado del progreso: puede no estar disponible, el juego funciona igual sin él */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sin guardado */ } },
+};
+
 /* ---------- estado global ---------- */
 const S = {
   screen: 'menu',           // menu | intro | play | pause | over | win | done
@@ -191,7 +197,7 @@ const S = {
   dark: false,
   diff: 'facil',            // facil | normal
   startPhase: 0,
-  unlocked: Math.min(PHASES.length - 1, parseInt(localStorage.getItem('parque_unlocked') || '0', 10) || 0),
+  unlocked: Math.min(PHASES.length - 1, parseInt(store.get('parque_unlocked') || '0', 10) || 0),
 };
 let G = null;
 
@@ -1137,7 +1143,7 @@ function showIntro(i) {
 
 function phaseComplete() {
   const i = G.i;
-  if (i + 1 > S.unlocked && i + 1 < PHASES.length) { S.unlocked = i + 1; localStorage.setItem('parque_unlocked', String(S.unlocked)); }
+  if (i + 1 > S.unlocked && i + 1 < PHASES.length) { S.unlocked = i + 1; store.set('parque_unlocked', String(S.unlocked)); }
   if (i + 1 >= PHASES.length) {
     S.screen = 'win'; SFX.win();
     showOverlay(`
