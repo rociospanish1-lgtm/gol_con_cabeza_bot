@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>La Huerta de Noche</title>
+<title>Escapa del Parque</title>
 <style>
   html,body{margin:0;height:100%;background:#0b0b18;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
   #hud{position:fixed;top:0;left:0;right:0;height:48px;display:flex;align-items:center;gap:12px;padding:0 10px;background:#141428;border-bottom:2px solid #2a2a4a;font-size:14px;box-sizing:border-box;white-space:nowrap;overflow:hidden}
@@ -48,10 +48,10 @@
 <script>
 'use strict';
 /* =========================================================
-   LA HUERTA DE NOCHE — juego original
-   Cuatro exploradores tienen que sobrevivir a la noche
-   mientras el Plátano, el Pimiento, la Fresa y la Patata
-   los cazan: recoger objetos, esconderse en cajas y huir.
+   ESCAPA DEL PARQUE — juego original
+   Cuatro exploradores tienen que escapar del parque de bolas
+   y del parque de atracciones mientras el Plátano, el Pimiento,
+   la Fresa y la Patata los persiguen.
    ========================================================= */
 const COLS = 32, ROWS = 18;
 const PLAYER_SPEED = 4.4;
@@ -83,9 +83,9 @@ const CONTROLS = [
 /* # muro · B caja (escondite) · S salida de jugadores · E enemigo · X puerta de salida */
 const PHASES = [
   {
-    name: 'La huerta', goal: 'El Plátano vigila la huerta. Recoge las semillas y escapa por la puerta.',
-    item: 'semillas', icon: '🌱', count: 6, enemies: ['platano'], speed: [2.1, 3.5], sight: 5.5,
-    theme: { floorA: '#1d3a22', floorB: '#21412a', wall: '#4a3426', wallTop: '#6e4e36', deco: '#2f6236' },
+    name: 'El parque de bolas', goal: 'El Plátano se ha colado en el parque de bolas. Coge todos los globos y sal por la puerta.',
+    hide: 'piscina de bolas', item: 'globos', icon: '🎈', count: 6, enemies: ['platano'], speed: [2.1, 3.5], sight: 5.5,
+    theme: { style: 'bolas', floorA: '#bfe3ff', floorB: '#b2dafa', blocks: ['#ff5a5a', '#ffcf3a', '#4aa3ff', '#4cd07a'] },
     map: [
       '################################',
       '#SS.....#.........#............#',
@@ -108,9 +108,9 @@ const PHASES = [
     ],
   },
   {
-    name: 'La cocina', goal: 'El Pimiento se une a la caza. Recoge los cubitos de hielo sin que te pillen.',
-    item: 'cubitos de hielo', icon: '🧊', count: 8, enemies: ['pimiento', 'platano'], speed: [2.2, 3.6], sight: 6,
-    theme: { floorA: '#2b3140', floorB: '#323a4c', wall: '#5b6475', wallTop: '#7d879a', deco: '#3a4356' },
+    name: 'Los toboganes', goal: 'En la zona de toboganes también está el Pimiento. Coge todas las estrellas.',
+    hide: 'piscina de bolas', item: 'estrellas', icon: '⭐', count: 8, enemies: ['pimiento', 'platano'], speed: [2.2, 3.6], sight: 6,
+    theme: { style: 'bolas', floorA: '#d6f5c6', floorB: '#c9eeb8', blocks: ['#a66bff', '#ff9b3d', '#ff6fb5', '#4aa3ff'] },
     map: [
       '################################',
       '#SS....#.......B.......#.......#',
@@ -133,9 +133,9 @@ const PHASES = [
     ],
   },
   {
-    name: 'La despensa', goal: 'La Fresa te ve desde lejos. Recoge las bombillas para encender la despensa.',
-    item: 'bombillas', icon: '💡', count: 10, enemies: ['fresa', 'pimiento', 'platano'], speed: [2.3, 3.7], sight: 6,
-    theme: { floorA: '#3a2a1c', floorB: '#433021', wall: '#22170f', wallTop: '#4a3524', deco: '#523b28' },
+    name: 'La feria', goal: 'Ya estáis en el parque de atracciones. La Fresa te ve desde lejos. Coge todos los tickets.',
+    hide: 'caseta', item: 'tickets', icon: '🎟️', count: 10, enemies: ['fresa', 'pimiento', 'platano'], speed: [2.3, 3.7], sight: 6,
+    theme: { style: 'feria', floorA: '#efdfbf', floorB: '#e6d3ac', stripe: '#e8323c', band: '#ffcf3a' },
     map: [
       '################################',
       '#SS.#.......#........#.......B.#',
@@ -158,9 +158,9 @@ const PHASES = [
     ],
   },
   {
-    name: 'El mercado', goal: 'Última noche: llega la Patata y los cuatro villanos cazan juntos. Consigue las llaves y salid.',
-    item: 'llaves', icon: '🔑', count: 12, enemies: ['patata', 'fresa', 'pimiento', 'platano'], speed: [2.4, 3.8], sight: 6.2,
-    theme: { floorA: '#24243a', floorB: '#2a2a44', wall: '#5a2a3a', wallTop: '#7a3a50', deco: '#36365e' },
+    name: 'La montaña rusa', goal: 'Última fase: llega la Patata y los cuatro villanos os buscan juntos. Coge las piruletas y escapad del parque.',
+    hide: 'caseta', item: 'piruletas', icon: '🍭', count: 12, enemies: ['patata', 'fresa', 'pimiento', 'platano'], speed: [2.4, 3.8], sight: 6.2,
+    theme: { style: 'feria', floorA: '#dcd0ee', floorB: '#d2c4e6', stripe: '#4aa3ff', band: '#ff6fb5' },
     map: [
       '################################',
       '#SS............................#',
@@ -188,9 +188,10 @@ const PHASES = [
 const S = {
   screen: 'menu',           // menu | intro | play | pause | over | win | done
   numPlayers: 1,
-  dark: true,
+  dark: false,
+  diff: 'facil',            // facil | normal
   startPhase: 0,
-  unlocked: Math.min(PHASES.length - 1, parseInt(localStorage.getItem('huerta_unlocked') || '0', 10) || 0),
+  unlocked: Math.min(PHASES.length - 1, parseInt(localStorage.getItem('parque_unlocked') || '0', 10) || 0),
 };
 let G = null;
 
@@ -396,19 +397,20 @@ function startPhase(i) {
     });
   }
   const crowd = S.numPlayers >= 3 ? 1.05 : 1;   // con más jugadores, villanos algo más rápidos
+  const easy = S.diff === 'facil';
   const enemies = ph.enemies.map((type, j) => {
     const sp = m.enemySpawns[j % m.enemySpawns.length], v = VILLAINS[type];
     return {
       type, x: sp.c + 0.5 + (j >= m.enemySpawns.length ? 0.01 : 0), y: sp.r + 0.5,
       state: 'patrol', path: [], timer: 0, target: null, last: null, repath: 0,
       anim: Math.random() * 5, moving: false, face: { x: 0, y: 1 },
-      mult: v.speed * crowd, chaseMult: v.chase / v.speed, sightMult: v.sight,
+      mult: v.speed * crowd * (easy ? 0.82 : 1), chaseMult: v.chase / v.speed, sightMult: v.sight * (easy ? 0.8 : 1),
     };
   });
   G = {
     i, ph, m, players, enemies,
     items: placeItems(m, ph.count),
-    collected: 0, open: false, time: 0, start: 3.5,
+    collected: 0, open: false, time: 0, start: easy ? 4.5 : 3.5, lives: easy ? 5 : 3,
     msg: '', msgT: 0, heart: 0, hudT: 0, static: null, caughtTotal: 0,
   };
   renderStatic();
@@ -567,7 +569,7 @@ function updateEnemyAI(e, dt) {
     e.state = 'chase'; e.target = best; e.last = { x: best.x, y: best.y };
   } else if (e.state === 'chase') {
     const t = e.target;
-    if (t && t.hidden && !t.caught && dist(e, t) < 1.1) { catchPlayer(e, t, `¡${cap(VNAME(e.type))} ha visto a ${t.ch.name} meterse en la caja!`); return; }
+    if (S.diff === 'normal' && t && t.hidden && !t.caught && dist(e, t) < 1.1) { catchPlayer(e, t, `¡${cap(VNAME(e.type))} ha visto a ${t.ch.name} esconderse!`); return; }
     e.state = 'search'; e.timer = 2.5;
     e.path = pathBetween(G.m, tileOf(e), tileOf(e.last || e));
   }
@@ -597,6 +599,22 @@ function updateEnemyAI(e, dt) {
 }
 const cap = str => str.charAt(0).toUpperCase() + str.slice(1);
 
+function loseLife() {
+  G.lives--;
+  if (G.lives <= 0) { gameOver(); return; }
+  G.players.forEach((p, k) => {
+    if (p.safe) return;
+    const sp = G.m.spawns[k % G.m.spawns.length];
+    p.x = sp.c + 0.5; p.y = sp.r + 0.5; p.caught = false; p.hidden = null; p.inv = 2.5; p.prevAct = true;
+  });
+  G.enemies.forEach((e, j) => {
+    const sp = G.m.enemySpawns[j % G.m.enemySpawns.length];
+    e.x = sp.c + 0.5; e.y = sp.r + 0.5; e.state = 'patrol'; e.path = []; e.target = null;
+  });
+  G.start = 3;
+  banner(`¡Pillados! Os quedan ${G.lives} ❤️`, 2.5);
+}
+
 function update(dt) {
   G.time += dt;
   if (G.start > 0) {
@@ -618,7 +636,7 @@ function update(dt) {
 
   const alive = G.players.filter(p => !p.caught && !p.safe);
   if (alive.length === 0) {
-    if (G.players.some(p => p.safe)) phaseComplete(); else gameOver();
+    if (G.players.some(p => p.safe)) phaseComplete(); else loseLife();
   }
 
   G.hudT -= dt;
@@ -829,21 +847,61 @@ function renderStatic() {
   const th = G.ph.theme;
   let seed = 7 + G.i * 13;
   const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const BALLS = ['#ff5a5a', '#ffcf3a', '#4aa3ff', '#4cd07a', '#ff6fb5', '#a66bff'];
+  const ol = Math.max(1, TS * 0.05);
   for (let r = 0; r < ROWS; r++) for (let col = 0; col < COLS; col++) {
     const x = col * TS, y = r * TS, v = G.m.grid[r][col];
+    c.fillStyle = (r + col) % 2 ? th.floorA : th.floorB; c.fillRect(x, y, TS, TS);
     if (v === 1) {
-      c.fillStyle = th.wall; c.fillRect(x, y, TS, TS);
-      c.fillStyle = th.wallTop; c.fillRect(x, y, TS, TS * 0.7);
-      c.fillStyle = 'rgba(0,0,0,.18)'; c.fillRect(x, y + TS * 0.7, TS, 1);
+      if (th.style === 'bolas') {
+        // bloques blandos de colores
+        c.fillStyle = th.blocks[(r * 7 + col * 3) % th.blocks.length];
+        roundRect(c, x + 1, y + 1, TS - 2, TS - 2, TS * 0.18); c.fill();
+        c.fillStyle = 'rgba(0,0,0,.18)'; roundRect(c, x + 1, y + TS * 0.68, TS - 2, TS * 0.3, TS * 0.14); c.fill();
+        c.strokeStyle = OUT; c.lineWidth = ol; roundRect(c, x + 1, y + 1, TS - 2, TS - 2, TS * 0.18); c.stroke();
+      } else {
+        // carpa de feria a rayas
+        c.fillStyle = '#fff'; c.fillRect(x, y, TS, TS);
+        c.fillStyle = th.stripe;
+        for (let k = 0; k < 4; k += 2) c.fillRect(x + k * TS / 4, y, TS / 4, TS);
+        c.fillStyle = th.band; c.fillRect(x, y, TS, TS * 0.22);
+        c.strokeStyle = OUT; c.lineWidth = ol; c.strokeRect(x + ol / 2, y + ol / 2, TS - ol, TS - ol);
+      }
     } else {
-      c.fillStyle = (r + col) % 2 ? th.floorA : th.floorB; c.fillRect(x, y, TS, TS);
-      if (rnd() < 0.18) { c.fillStyle = th.deco; c.beginPath(); c.arc(x + rnd() * TS, y + rnd() * TS, TS * 0.06, 0, 7); c.fill(); }
+      if (th.style === 'bolas') {
+        if (rnd() < 0.22) {
+          c.fillStyle = BALLS[Math.floor(rnd() * BALLS.length)];
+          c.beginPath(); c.arc(x + TS * (0.2 + rnd() * 0.6), y + TS * (0.2 + rnd() * 0.6), TS * 0.09, 0, 7); c.fill();
+          c.strokeStyle = OUT; c.lineWidth = ol * 0.6; c.stroke();
+        }
+      } else if (rnd() < 0.2) {
+        c.save(); c.translate(x + TS * rnd(), y + TS * rnd()); c.rotate(rnd() * 3);
+        c.fillStyle = BALLS[Math.floor(rnd() * BALLS.length)]; c.fillRect(-TS * 0.05, -TS * 0.025, TS * 0.1, TS * 0.05);
+        c.restore();
+      }
       if (v === 2) {
-        c.fillStyle = '#9a6a3a'; roundRect(c, x + TS * 0.06, y + TS * 0.06, TS * 0.88, TS * 0.88, TS * 0.08); c.fill();
-        c.strokeStyle = '#5e3d1e'; c.lineWidth = Math.max(1, TS * 0.05); c.stroke();
-        c.beginPath(); c.moveTo(x + TS * 0.12, y + TS * 0.12); c.lineTo(x + TS * 0.88, y + TS * 0.88);
-        c.moveTo(x + TS * 0.88, y + TS * 0.12); c.lineTo(x + TS * 0.12, y + TS * 0.88); c.stroke();
-        c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x + TS * 0.1, y + TS * 0.1, TS * 0.8, TS * 0.08);
+        if (th.style === 'bolas') {
+          // piscina de bolas (escondite)
+          c.fillStyle = '#4aa3ff'; roundRect(c, x + TS * 0.04, y + TS * 0.04, TS * 0.92, TS * 0.92, TS * 0.2); c.fill();
+          c.strokeStyle = OUT; c.lineWidth = ol; c.stroke();
+          for (let k = 0; k < 11; k++) {
+            c.fillStyle = BALLS[k % BALLS.length];
+            c.beginPath(); c.arc(x + TS * (0.22 + ((k * 37) % 56) / 100), y + TS * (0.22 + ((k * 53) % 56) / 100), TS * 0.11, 0, 7); c.fill();
+            c.lineWidth = ol * 0.6; c.stroke();
+          }
+        } else {
+          // caseta de feria (escondite)
+          c.fillStyle = '#c98a4b'; roundRect(c, x + TS * 0.08, y + TS * 0.3, TS * 0.84, TS * 0.64, TS * 0.06); c.fill();
+          c.strokeStyle = OUT; c.lineWidth = ol; c.stroke();
+          c.fillStyle = '#fff'; c.fillRect(x + TS * 0.04, y + TS * 0.06, TS * 0.92, TS * 0.28);
+          c.fillStyle = th.stripe;
+          for (let k = 0; k < 4; k += 2) c.fillRect(x + TS * 0.04 + k * TS * 0.23, y + TS * 0.06, TS * 0.23, TS * 0.28);
+          c.strokeRect(x + TS * 0.04, y + TS * 0.06, TS * 0.92, TS * 0.28);
+          for (let k = 0; k < 4; k++) {
+            c.fillStyle = k % 2 ? '#fff' : th.stripe;
+            c.beginPath(); c.arc(x + TS * (0.155 + k * 0.23), y + TS * 0.34, TS * 0.115, 0, Math.PI); c.fill(); c.stroke();
+          }
+        }
       }
     }
   }
@@ -852,19 +910,29 @@ function renderStatic() {
 
 function drawExit(t) {
   const { c: col, r } = G.m.exit;
-  const x = px(col + 0.5), y = py(r + 0.5);
+  const x = px(col + 0.5), y = py(r + 0.5), s = TS;
   ctx.save();
   if (G.open) {
     const pulse = 0.5 + 0.5 * Math.sin(t * 4);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, TS * 1.2);
-    g.addColorStop(0, `rgba(120,255,140,${0.7 + pulse * 0.3})`); g.addColorStop(1, 'rgba(120,255,140,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, TS * 1.2, 0, 7); ctx.fill();
-    ctx.fillStyle = '#1d6b2c'; roundRect(ctx, x - TS * 0.38, y - TS * 0.45, TS * 0.76, TS * 0.9, TS * 0.1); ctx.fill();
-    ctx.fillStyle = '#b6ffbf'; roundRect(ctx, x - TS * 0.26, y - TS * 0.33, TS * 0.52, TS * 0.7, TS * 0.06); ctx.fill();
+    const g = ctx.createRadialGradient(x, y, 0, x, y, s * 1.4);
+    g.addColorStop(0, `rgba(80,230,110,${0.6 + pulse * 0.3})`); g.addColorStop(1, 'rgba(80,230,110,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, s * 1.4, 0, 7); ctx.fill();
+  }
+  ctx.strokeStyle = OUT; ctx.lineWidth = LW(s) * 0.8;
+  // arco de la puerta del parque
+  ctx.fillStyle = G.open ? '#4cd07a' : '#8a8f99';
+  ctx.fillRect(x - s * 0.45, y - s * 0.3, s * 0.14, s * 0.75); ctx.strokeRect(x - s * 0.45, y - s * 0.3, s * 0.14, s * 0.75);
+  ctx.fillRect(x + s * 0.31, y - s * 0.3, s * 0.14, s * 0.75); ctx.strokeRect(x + s * 0.31, y - s * 0.3, s * 0.14, s * 0.75);
+  ctx.beginPath(); ctx.arc(x, y - s * 0.3, s * 0.45, Math.PI, 0); ctx.arc(x, y - s * 0.3, s * 0.31, 0, Math.PI, true); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (!G.open) {
+    ctx.strokeStyle = '#4a4f59'; ctx.lineWidth = LW(s);
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x + k * s * 0.12, y - s * 0.45); ctx.lineTo(x + k * s * 0.12, y + s * 0.45); ctx.stroke(); }
+    ctx.fillStyle = '#ffcf3a'; ctx.strokeStyle = OUT; ctx.lineWidth = LW(s) * 0.6;
+    roundRect(ctx, x - s * 0.1, y - s * 0.02, s * 0.2, s * 0.16, s * 0.03); ctx.fill(); ctx.stroke();
   } else {
-    ctx.fillStyle = '#3b2a1e'; roundRect(ctx, x - TS * 0.38, y - TS * 0.45, TS * 0.76, TS * 0.9, TS * 0.1); ctx.fill();
-    ctx.strokeStyle = '#1e140c'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#f4c430'; ctx.beginPath(); ctx.arc(x + TS * 0.2, y, TS * 0.05, 0, 7); ctx.fill();
+    ctx.font = `bold ${Math.max(9, s * 0.3)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.strokeText('SALIDA', x, y - s * 0.95);
+    ctx.fillStyle = '#1d7a36'; ctx.fillText('SALIDA', x, y - s * 0.95);
   }
   ctx.restore();
 }
@@ -969,7 +1037,7 @@ function render() {
 
   // mensajes
   let text = G.msgT > 0 ? G.msg : '';
-  if (G.start > 0) text = `¡Escondeos! ${Math.ceil(G.start)}`;
+  if (G.start > 0 && G.msgT <= 0) text = `¡Escondeos! ${Math.ceil(G.start)}`;
   if (text) {
     ctx.font = `bold ${Math.max(14, Math.min(30, TS * 0.8))}px system-ui,sans-serif`;
     const w = ctx.measureText(text).width + 36, h = Math.max(30, Math.min(52, TS * 1.4));
@@ -984,10 +1052,10 @@ function render() {
 /* ---------- HUD y pantallas ---------- */
 const hud = document.getElementById('hud');
 function drawHud() {
-  if (!G) { hud.innerHTML = '<b>🌙 La Huerta de Noche</b>'; return; }
+  if (!G) { hud.innerHTML = '<b>🎡 Escapa del Parque</b>'; return; }
   const st = p => p.caught ? ['caught', '¡Atrapado!'] : p.safe ? ['safe', 'A salvo'] : p.hidden ? ['hidden', 'Escondido'] : ['', 'Libre'];
   const chips = G.players.map(p => { const [cl, tx] = st(p); return `<span class="chip ${cl}"><i style="background:${p.ch.color}"></i>${p.ch.name}: ${tx}</span>`; }).join(' ');
-  hud.innerHTML = `<b>Fase ${G.i + 1}: ${G.ph.name}</b><span>${G.ph.icon} ${G.collected}/${G.ph.count}</span><span>${G.open ? '🚪 Abierta' : '🔒 Cerrada'}</span><span class="grow"></span>${chips}<button onclick="pauseGame()">⏸</button>`;
+  hud.innerHTML = `<b>Fase ${G.i + 1}: ${G.ph.name}</b><span>${'❤️'.repeat(Math.max(0, G.lives))}</span><span>${G.ph.icon} ${G.collected}/${G.ph.count}</span><span>${G.open ? '🚪 Abierta' : '🔒 Cerrada'}</span><span class="grow"></span>${chips}<button onclick="pauseGame()">⏸</button>`;
 }
 
 const overlay = document.getElementById('overlay');
@@ -1010,13 +1078,14 @@ function showMenu() {
     ? `<button data-ph="${i}" class="${S.startPhase === i ? 'sel' : ''}">${i + 1}. ${p.name}</button>`
     : `<button disabled style="opacity:.4">🔒 ${i + 1}</button>`).join('');
   showOverlay(`
-    <h1>🌙 La Huerta de Noche</h1>
-    <p>Cuando se apagan las luces, el Plátano, el Pimiento, la Fresa y la Patata salen a cazar. Recoged todos los objetos de cada fase, escondeos en las cajas cuando os vean y escapad por la puerta. Si pillan a un compañero, tocadle para liberarle.</p>
+    <h1>🎡 Escapa del Parque</h1>
+    <p>¡El Plátano, el Pimiento, la Fresa y la Patata se han escapado y os persiguen por el parque de bolas y el parque de atracciones! Coged todos los objetos, escondeos en las piscinas de bolas y en las casetas, y salid por la puerta. Si pillan a un amigo, tocadle para salvarle.</p>
     <div class="row" id="villains"></div>
     <div class="row"><span class="lbl">Jugadores:</span>${[1, 2, 3, 4].map(n => `<button data-np="${n}" class="${S.numPlayers === n ? 'sel' : ''}">${n}</button>`).join('')}</div>
     <div class="cards" id="cards"></div>
     <div class="row"><span class="lbl">Fase:</span>${phases}</div>
-    <div class="row"><span class="lbl">Oscuridad:</span><button id="dk" class="${S.dark ? 'sel' : ''}">${S.dark ? 'Sí (más miedo)' : 'No (más fácil)'}</button></div>
+    <div class="row"><span class="lbl">Dificultad:</span><button data-df="facil" class="${S.diff === 'facil' ? 'sel' : ''}">Fácil · 5 ❤️</button><button data-df="normal" class="${S.diff === 'normal' ? 'sel' : ''}">Normal · 3 ❤️</button></div>
+    <div class="row"><span class="lbl">Modo noche:</span><button id="dk" class="${S.dark ? 'sel' : ''}">${S.dark ? 'Sí (a oscuras)' : 'No (de día)'}</button></div>
     <div class="row"><button class="big" data-primary id="go">¡Jugar!</button></div>
     <small>Mandos: el mando 1 controla al jugador 1, el 2 al jugador 2… (botón A para esconderse). En móvil, joystick y botón para el jugador 1. Pausa: Esc o P.</small>
   `);
@@ -1039,6 +1108,7 @@ function showMenu() {
   overlay.querySelectorAll('[data-np]').forEach(b => b.onclick = () => { S.numPlayers = +b.dataset.np; showMenu(); });
   overlay.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.startPhase = +b.dataset.ph; showMenu(); });
   document.getElementById('dk').onclick = () => { S.dark = !S.dark; showMenu(); };
+  overlay.querySelectorAll('[data-df]').forEach(b => b.onclick = () => { S.diff = b.dataset.df; showMenu(); });
   document.getElementById('go').onclick = () => { audio(); showIntro(S.startPhase); };
 }
 
@@ -1049,7 +1119,7 @@ function showIntro(i) {
     <h2>Fase ${i + 1} de ${PHASES.length}: ${ph.name}</h2>
     <p style="font-size:40px;margin:4px">${ph.icon}</p>
     <p>${ph.goal}</p>
-    <p>Objetivo: <b>${ph.count} ${ph.item}</b> · Villanos: <b>${ph.enemies.length}</b></p>
+    <p>Objetivo: <b>${ph.count} ${ph.item}</b> · Escondites: <b>${ph.hide === 'caseta' ? 'casetas' : 'piscinas de bolas'}</b> · Villanos: <b>${ph.enemies.length}</b></p>
     <div class="row" id="pv"></div>
     <div class="row"><button class="big" data-primary id="go">¡Vamos!</button><button id="mn">Menú</button></div>
   `);
@@ -1067,11 +1137,11 @@ function showIntro(i) {
 
 function phaseComplete() {
   const i = G.i;
-  if (i + 1 > S.unlocked && i + 1 < PHASES.length) { S.unlocked = i + 1; localStorage.setItem('huerta_unlocked', String(S.unlocked)); }
+  if (i + 1 > S.unlocked && i + 1 < PHASES.length) { S.unlocked = i + 1; localStorage.setItem('parque_unlocked', String(S.unlocked)); }
   if (i + 1 >= PHASES.length) {
     S.screen = 'win'; SFX.win();
     showOverlay(`
-      <h1>🏆 ¡Habéis sobrevivido a todas las noches!</h1>
+      <h1>🏆 ¡Habéis escapado del parque!</h1>
       <p>Nico, Lola, Max y Bea han escapado del Plátano, el Pimiento, la Fresa y la Patata.</p>
       <div class="row"><button class="big" data-primary id="mn">Volver al menú</button></div>`);
     document.getElementById('mn').onclick = showMenu;
@@ -1080,9 +1150,9 @@ function phaseComplete() {
   S.screen = 'done'; SFX.win();
   const saved = G.players.filter(p => p.safe).length;
   showOverlay(`
-    <h2>🌅 ¡Fase ${i + 1} superada!</h2>
+    <h2>🎉 ¡Fase ${i + 1} superada!</h2>
     <p>A salvo: <b>${saved}/${G.players.length}</b> · Veces atrapados: <b>${G.caughtTotal}</b></p>
-    <p>Los que se quedaron atrapados se liberan para la siguiente noche.</p>
+    <p>Los que se quedaron atrapados vuelven a jugar en la siguiente fase.</p>
     <div class="row"><button class="big" data-primary id="nx">Siguiente fase</button><button id="mn">Menú</button></div>`);
   document.getElementById('nx').onclick = () => showIntro(i + 1);
   document.getElementById('mn').onclick = showMenu;
@@ -1092,9 +1162,9 @@ function gameOver() {
   S.screen = 'over'; SFX.lose();
   const i = G.i;
   showOverlay(`
-    <h2>😱 ¡Os han pillado!</h2>
+    <h2>😱 ¡Se acabaron las vidas!</h2>
     <p>Habéis recogido ${G.collected} de ${G.ph.count} ${G.ph.item}.</p>
-    <p><small>Truco: cuando veas unos ojos rojos, métete en una caja antes de que esté encima. Si te ve entrar, te saca.</small></p>
+    <p><small>Truco: cuando un villano levante los brazos es que te ha visto. ¡Corre a la piscina de bolas o a la caseta más cercana!</small></p>
     <div class="row"><button class="big" data-primary id="rt">Reintentar</button><button id="mn">Menú</button></div>`);
   document.getElementById('rt').onclick = () => startPhase(i);
   document.getElementById('mn').onclick = showMenu;
@@ -1134,7 +1204,7 @@ function loop(now) {
 }
 
 /* ---------- utilidades de prueba ---------- */
-window.__huerta = { S, PHASES, parseMap, bfs, startPhase, get G() { return G; } };
+window.__huerta = window.__parque = { S, PHASES, parseMap, bfs, startPhase, get G() { return G; } };
 
 resize();
 drawHud();
