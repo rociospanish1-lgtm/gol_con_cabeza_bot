@@ -49,19 +49,29 @@
 'use strict';
 /* =========================================================
    LA HUERTA DE NOCHE — juego original
-   Plátano, Pimiento, Fresa y Patata tienen que sobrevivir
-   a la noche: recoger objetos, esconderse en cajas y huir.
+   Cuatro exploradores tienen que sobrevivir a la noche
+   mientras el Plátano, el Pimiento, la Fresa y la Patata
+   los cazan: recoger objetos, esconderse en cajas y huir.
    ========================================================= */
 const COLS = 32, ROWS = 18;
 const PLAYER_SPEED = 4.4;
 const PLAYER_R = 0.3;
 
 const CHARS = [
-  { key: 'platano',  name: 'Plátano',  color: '#ffd93b' },
-  { key: 'pimiento', name: 'Pimiento', color: '#3fae3a' },
-  { key: 'fresa',    name: 'Fresa',    color: '#e8323c' },
-  { key: 'patata',   name: 'Patata',   color: '#c8995b' },
+  { key: 'azul',    name: 'Nico', color: '#4aa3ff', dark: '#1f5fae', light: '#bfe0ff' },
+  { key: 'naranja', name: 'Lola', color: '#ff9b3d', dark: '#b85a12', light: '#ffd9b3' },
+  { key: 'morado',  name: 'Max',  color: '#a66bff', dark: '#5f32b0', light: '#e0ccff' },
+  { key: 'rosa',    name: 'Bea',  color: '#ff6fb5', dark: '#b23577', light: '#ffd0e6' },
 ];
+
+/* Los villanos */
+const VILLAINS = {
+  platano:  { name: 'Plátano',  art: 'el', color: '#ffd93b', speed: 1.0,  chase: 1.0,  sight: 1.0,  eyeY: -0.14, eyeDX: 0.1,  desc: 'Patrulla sin parar.' },
+  pimiento: { name: 'Pimiento', art: 'el', color: '#3fae3a', speed: 1.12, chase: 1.12, sight: 0.8,  eyeY: -0.06, eyeDX: 0.12, desc: 'Muy rápido, pero ve poco.' },
+  fresa:    { name: 'Fresa',    art: 'la', color: '#e8323c', speed: 0.9,  chase: 0.92, sight: 1.35, eyeY: -0.08, eyeDX: 0.13, desc: 'Lenta, pero te ve desde muy lejos.' },
+  patata:   { name: 'Patata',   art: 'la', color: '#c8995b', speed: 0.8,  chase: 1.08, sight: 1.0,  eyeY: -0.1,  eyeDX: 0.13, desc: 'Pasea despacio y acelera cuando te ve.' },
+};
+const VNAME = t => `${VILLAINS[t].art} ${VILLAINS[t].name}`;
 
 const CONTROLS = [
   { up: 'KeyW',    down: 'KeyS',      left: 'KeyA',      right: 'KeyD',       act: 'KeyE',  label: 'W A S D · esconderse: E' },
@@ -73,8 +83,8 @@ const CONTROLS = [
 /* # muro · B caja (escondite) · S salida de jugadores · E enemigo · X puerta de salida */
 const PHASES = [
   {
-    name: 'La huerta', goal: 'Recoge todas las semillas y escapa por la puerta.',
-    item: 'semillas', icon: '🌱', count: 6, enemies: ['batidora'], speed: [2.1, 3.5], sight: 5.5,
+    name: 'La huerta', goal: 'El Plátano vigila la huerta. Recoge las semillas y escapa por la puerta.',
+    item: 'semillas', icon: '🌱', count: 6, enemies: ['platano'], speed: [2.1, 3.5], sight: 5.5,
     theme: { floorA: '#1d3a22', floorB: '#21412a', wall: '#4a3426', wallTop: '#6e4e36', deco: '#2f6236' },
     map: [
       '################################',
@@ -98,8 +108,8 @@ const PHASES = [
     ],
   },
   {
-    name: 'La cocina', goal: 'Recoge los cubitos de hielo antes de que te pille la Batidora.',
-    item: 'cubitos de hielo', icon: '🧊', count: 8, enemies: ['batidora'], speed: [2.4, 3.8], sight: 6,
+    name: 'La cocina', goal: 'El Pimiento se une a la caza. Recoge los cubitos de hielo sin que te pillen.',
+    item: 'cubitos de hielo', icon: '🧊', count: 8, enemies: ['pimiento', 'platano'], speed: [2.2, 3.6], sight: 6,
     theme: { floorA: '#2b3140', floorB: '#323a4c', wall: '#5b6475', wallTop: '#7d879a', deco: '#3a4356' },
     map: [
       '################################',
@@ -117,14 +127,14 @@ const PHASES = [
       '#....#....#..........#....#....#',
       '#....#.B..#....##....#..B.#....#',
       '#....#....#....##....#....#....#',
-      '#..............................#',
+      '#...............E..............#',
       '#B...........................X.#',
       '################################',
     ],
   },
   {
-    name: 'La despensa', goal: 'Enciende la despensa: recoge las bombillas. Ahora hay dos cazadores.',
-    item: 'bombillas', icon: '💡', count: 10, enemies: ['batidora', 'rallador'], speed: [2.5, 3.9], sight: 6,
+    name: 'La despensa', goal: 'La Fresa te ve desde lejos. Recoge las bombillas para encender la despensa.',
+    item: 'bombillas', icon: '💡', count: 10, enemies: ['fresa', 'pimiento', 'platano'], speed: [2.3, 3.7], sight: 6,
     theme: { floorA: '#3a2a1c', floorB: '#433021', wall: '#22170f', wallTop: '#4a3524', deco: '#523b28' },
     map: [
       '################################',
@@ -148,8 +158,8 @@ const PHASES = [
     ],
   },
   {
-    name: 'El mercado', goal: 'Última noche: consigue todas las llaves y salid del mercado.',
-    item: 'llaves', icon: '🔑', count: 12, enemies: ['batidora', 'rallador', 'batidora'], speed: [2.6, 4.0], sight: 6.5,
+    name: 'El mercado', goal: 'Última noche: llega la Patata y los cuatro villanos cazan juntos. Consigue las llaves y salid.',
+    item: 'llaves', icon: '🔑', count: 12, enemies: ['patata', 'fresa', 'pimiento', 'platano'], speed: [2.4, 3.8], sight: 6.2,
     theme: { floorA: '#24243a', floorB: '#2a2a44', wall: '#5a2a3a', wallTop: '#7a3a50', deco: '#36365e' },
     map: [
       '################################',
@@ -385,11 +395,15 @@ function startPhase(i) {
       face: { x: 0, y: 1 }, moving: false, t: Math.random() * 10, prevAct: true,
     });
   }
-  const types = ph.enemies.slice();
-  if (S.numPlayers >= 3 && i >= 1) types.push(i % 2 ? 'rallador' : 'batidora');
-  const enemies = types.map((type, j) => {
-    const sp = m.enemySpawns[j % m.enemySpawns.length];
-    return { type, x: sp.c + 0.5 + (j >= m.enemySpawns.length ? 0.01 : 0), y: sp.r + 0.5, state: 'patrol', path: [], timer: 0, target: null, last: null, repath: 0, spin: 0, mult: type === 'rallador' ? 1.07 : 1 };
+  const crowd = S.numPlayers >= 3 ? 1.05 : 1;   // con más jugadores, villanos algo más rápidos
+  const enemies = ph.enemies.map((type, j) => {
+    const sp = m.enemySpawns[j % m.enemySpawns.length], v = VILLAINS[type];
+    return {
+      type, x: sp.c + 0.5 + (j >= m.enemySpawns.length ? 0.01 : 0), y: sp.r + 0.5,
+      state: 'patrol', path: [], timer: 0, target: null, last: null, repath: 0,
+      anim: Math.random() * 5, moving: false, face: { x: 0, y: 1 },
+      mult: v.speed * crowd, chaseMult: v.chase / v.speed, sightMult: v.sight,
+    };
   });
   G = {
     i, ph, m, players, enemies,
@@ -524,12 +538,20 @@ function catchPlayer(e, p, msg) {
   e.state = 'pause'; e.timer = 1.6; e.path = []; e.target = null;
   SFX.caught();
   const others = G.players.some(q => q !== p && !q.caught && !q.safe);
-  banner(msg || (others ? `¡Han pillado a ${p.ch.name}! Tocadle para rescatarle` : `¡Han pillado a ${p.ch.name}!`), 2.6);
+  banner(msg || (others ? `¡${cap(VNAME(e.type))} ha pillado a ${p.ch.name}! Tocadle para rescatarle` : `¡${cap(VNAME(e.type))} ha pillado a ${p.ch.name}!`), 2.6);
 }
 
 function updateEnemy(e, dt) {
-  e.spin += dt * (e.state === 'chase' ? 22 : 9);
+  e.anim += dt;
+  const ox = e.x, oy = e.y;
+  e.moving = false;
   if (G.start > 0) return;
+  updateEnemyAI(e, dt);
+  const mdx = e.x - ox, mdy = e.y - oy, ml = Math.hypot(mdx, mdy);
+  if (ml > 1e-4) { e.moving = true; e.face = { x: mdx / ml, y: mdy / ml }; }
+}
+
+function updateEnemyAI(e, dt) {
   const ph = G.ph;
   if (e.state === 'pause') { e.timer -= dt; if (e.timer <= 0) { e.state = 'patrol'; e.path = []; } return; }
 
@@ -538,19 +560,19 @@ function updateEnemy(e, dt) {
   for (const p of G.players) {
     if (!active(p)) continue;
     const d = dist(e, p);
-    if (d < ph.sight && d < bd && lineOfSight(e, p)) { best = p; bd = d; }
+    if (d < ph.sight * e.sightMult && d < bd && lineOfSight(e, p)) { best = p; bd = d; }
   }
   if (best) {
     if (e.state !== 'chase') { SFX.alert(); }
     e.state = 'chase'; e.target = best; e.last = { x: best.x, y: best.y };
   } else if (e.state === 'chase') {
     const t = e.target;
-    if (t && t.hidden && !t.caught && dist(e, t) < 1.1) { catchPlayer(e, t, `¡La ${nameOf(e)} ha visto a ${t.ch.name} meterse en la caja!`); return; }
+    if (t && t.hidden && !t.caught && dist(e, t) < 1.1) { catchPlayer(e, t, `¡${cap(VNAME(e.type))} ha visto a ${t.ch.name} meterse en la caja!`); return; }
     e.state = 'search'; e.timer = 2.5;
-    e.path = pathBetween(G.m, tileOf(e), tileOf(e.last));
+    e.path = pathBetween(G.m, tileOf(e), tileOf(e.last || e));
   }
 
-  const speed = (e.state === 'chase' ? ph.speed[1] : ph.speed[0]) * e.mult;
+  const speed = e.state === 'chase' ? ph.speed[1] * e.mult * e.chaseMult : ph.speed[0] * e.mult;
   if (e.state === 'chase') {
     if (bd < 1.3) {
       const d = Math.max(bd, 1e-6), step = Math.min(d, speed * dt);
@@ -573,7 +595,7 @@ function updateEnemy(e, dt) {
     if (active(p) && p.inv <= 0 && dist(e, p) < 0.62) { catchPlayer(e, p); break; }
   }
 }
-const nameOf = e => e.type === 'rallador' ? 'Rallador' : 'Batidora';
+const cap = str => str.charAt(0).toUpperCase() + str.slice(1);
 
 function update(dt) {
   G.time += dt;
@@ -603,159 +625,197 @@ function update(dt) {
   if (G.hudT <= 0) { G.hudT = 0.15; drawHud(); }
 }
 
-/* ---------- dibujo de personajes (diseños propios) ---------- */
+/* ---------- dibujo de personajes: estilo plano 2D (diseños propios) ---------- */
+const OUT = '#1b1426';
+const LW = s => Math.max(2, s * 0.05);
+const BOB = (t, moving) => moving ? Math.abs(Math.sin(t * 12)) * -0.05 : Math.sin(t * 3) * 0.012;
+
 function roundRect(c, x, y, w, h, r) {
   c.beginPath();
   c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
   c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
 }
 
-function drawFace(c, s, t, face, ey, blush) {
-  const fx = (face ? face.x : 0) * s * 0.03, fy = (face ? face.y : 0) * s * 0.03;
-  const blink = (t % 4.2) < 0.12;
-  for (const sx of [-1, 1]) {
-    const x = sx * s * 0.11, y = ey * s;
-    if (blink) {
-      c.strokeStyle = '#1a1a1a'; c.lineWidth = Math.max(1.2, s * 0.03);
-      c.beginPath(); c.moveTo(x - s * 0.06, y); c.lineTo(x + s * 0.06, y); c.stroke();
-    } else {
-      c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, s * 0.085, 0, 7); c.fill();
-      c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(x + fx, y + fy, s * 0.045, 0, 7); c.fill();
-      c.fillStyle = '#fff'; c.beginPath(); c.arc(x + fx + s * 0.015, y + fy - s * 0.018, s * 0.014, 0, 7); c.fill();
-    }
+function drawLegs(c, s, t, moving, y0, spread) {
+  const ph = moving ? Math.sin(t * 12) : 0;
+  c.strokeStyle = OUT; c.lineWidth = LW(s) * 1.2; c.lineCap = 'round';
+  for (const k of [-1, 1]) {
+    const lift = moving ? Math.max(0, k * ph) * s * 0.08 : 0;
+    const fx = k * spread * s, fy = (y0 + 0.16) * s - lift;
+    c.beginPath(); c.moveTo(k * spread * 0.7 * s, y0 * s); c.lineTo(fx, fy); c.stroke();
+    c.fillStyle = OUT; c.beginPath(); c.ellipse(fx + k * s * 0.03, fy, s * 0.065, s * 0.035, 0, 0, 7); c.fill();
   }
-  if (blush) {
-    c.fillStyle = 'rgba(255,120,140,.45)';
-    for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * s * 0.2, (ey + 0.11) * s, s * 0.05, s * 0.03, 0, 0, 7); c.fill(); }
-  }
-  c.strokeStyle = '#2a1a10'; c.lineWidth = Math.max(1.2, s * 0.03); c.lineCap = 'round';
-  c.beginPath(); c.arc(0, (ey + 0.1) * s, s * 0.06, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
 }
 
-function drawChar(c, key, x, y, s, t, moving, face, alpha = 1) {
+function drawArms(c, s, t, raised, x0, y0) {
+  c.strokeStyle = OUT; c.lineWidth = LW(s) * 1.1; c.lineCap = 'round';
+  for (const k of [-1, 1]) {
+    const wav = Math.sin(t * 10 + k) * s * 0.03;
+    const hx = k * (x0 + 0.17) * s;
+    const hy = raised ? (y0 - 0.22) * s + wav : (y0 + 0.14) * s + wav;
+    c.beginPath(); c.moveTo(k * x0 * s, y0 * s); c.quadraticCurveTo(k * (x0 + 0.13) * s, y0 * s, hx, hy); c.stroke();
+    if (raised) {
+      c.beginPath();
+      for (const a of [-0.6, 0, 0.6]) { c.moveTo(hx, hy); c.lineTo(hx + Math.sin(a) * s * 0.06, hy - Math.cos(a) * s * 0.07); }
+      c.stroke();
+    } else {
+      c.fillStyle = OUT; c.beginPath(); c.arc(hx, hy, s * 0.032, 0, 7); c.fill();
+    }
+  }
+}
+
+/* --- exploradores (jugadores) --- */
+function drawHero(c, idx, x, y, s, t, moving, face, alpha = 1, scared = false) {
+  const ch = CHARS[idx];
   c.save();
   c.globalAlpha = alpha;
   c.translate(x, y);
-  c.fillStyle = 'rgba(0,0,0,.35)';
-  c.beginPath(); c.ellipse(0, s * 0.42, s * 0.27, s * 0.08, 0, 0, 7); c.fill();
-  const bob = moving ? Math.sin(t * 14) * s * 0.045 : Math.sin(t * 3) * s * 0.015;
-  c.translate(0, bob);
-  if (moving) c.rotate(Math.sin(t * 14) * 0.06);
-  c.lineWidth = Math.max(1.5, s * 0.04); c.lineJoin = 'round';
+  c.fillStyle = 'rgba(0,0,0,.3)';
+  c.beginPath(); c.ellipse(0, s * 0.36, s * 0.22, s * 0.06, 0, 0, 7); c.fill();
+  c.translate(0, BOB(t, moving) * s - s * 0.04);
+  c.lineJoin = 'round';
+  drawLegs(c, s, t, moving, 0.2, 0.11);
+  drawArms(c, s, t, scared, 0.24, 0.04);
+  // cuerpo
+  c.fillStyle = ch.color; c.strokeStyle = OUT; c.lineWidth = LW(s);
+  c.beginPath(); c.arc(0, 0, s * 0.26, 0, 7); c.fill(); c.stroke();
+  c.fillStyle = ch.light; c.beginPath(); c.ellipse(0, s * 0.1, s * 0.15, s * 0.1, 0, 0, 7); c.fill();
+  // gorra
+  c.fillStyle = ch.dark;
+  c.beginPath(); c.arc(0, 0, s * 0.26, Math.PI * 1.08, Math.PI * 1.92); c.closePath(); c.fill(); c.stroke();
+  const fx = (face ? face.x : 0), fy = (face ? face.y : 0);
+  roundRect(c, s * (-0.06 + fx * 0.12), -s * 0.16, s * 0.28, s * 0.06, s * 0.03);
+  c.fill(); c.stroke();
+  // ojos
+  const blink = (t % 4.2) < 0.12;
+  for (const k of [-1, 1]) {
+    const ex = k * s * 0.095, ey = -s * 0.02;
+    if (blink) { c.lineWidth = LW(s) * 0.8; c.beginPath(); c.moveTo(ex - s * 0.05, ey); c.lineTo(ex + s * 0.05, ey); c.stroke(); continue; }
+    c.fillStyle = '#fff'; c.lineWidth = LW(s) * 0.6;
+    c.beginPath(); c.arc(ex, ey, s * (scared ? 0.075 : 0.065), 0, 7); c.fill(); c.stroke();
+    c.fillStyle = OUT; c.beginPath(); c.arc(ex + fx * s * 0.022, ey + fy * s * 0.022, s * (scared ? 0.025 : 0.035), 0, 7); c.fill();
+  }
+  // boca
+  c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.8; c.lineCap = 'round';
+  if (scared) { c.fillStyle = OUT; c.beginPath(); c.ellipse(0, s * 0.11, s * 0.04, s * 0.05, 0, 0, 7); c.fill(); }
+  else { c.beginPath(); c.arc(0, s * 0.07, s * 0.06, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke(); }
+  c.restore();
+}
 
-  if (key === 'platano') {
-    c.save(); c.rotate(0.25);
-    c.fillStyle = '#ffd93b'; c.strokeStyle = '#a77d00';
+/* --- villanos --- */
+function villainBody(c, type, s) {
+  c.strokeStyle = OUT; c.lineWidth = LW(s); c.lineJoin = 'round';
+  if (type === 'platano') {
+    c.fillStyle = '#ffd93b';
     c.beginPath();
-    c.moveTo(-s * 0.04, -s * 0.4);
-    c.bezierCurveTo(-s * 0.4, -s * 0.22, -s * 0.36, s * 0.3, s * 0.02, s * 0.42);
-    c.bezierCurveTo(s * 0.3, s * 0.3, s * 0.34, -s * 0.18, s * 0.09, -s * 0.4);
+    c.moveTo(-s * 0.06, -s * 0.46);
+    c.bezierCurveTo(-s * 0.42, -s * 0.28, -s * 0.38, s * 0.3, s * 0.0, s * 0.42);
+    c.bezierCurveTo(s * 0.32, s * 0.3, s * 0.34, -s * 0.22, s * 0.08, -s * 0.46);
     c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = 'rgba(255,255,255,.35)';
-    c.beginPath(); c.ellipse(-s * 0.17, -s * 0.02, s * 0.04, s * 0.2, 0.1, 0, 7); c.fill();
-    c.fillStyle = '#6b4a1e'; roundRect(c, -s * 0.02, -s * 0.52, s * 0.1, s * 0.14, s * 0.03); c.fill();
-    c.fillStyle = '#5a3d17'; c.beginPath(); c.arc(s * 0.02, s * 0.41, s * 0.035, 0, 7); c.fill();
-    c.restore();
-    drawFace(c, s, t, face, -0.02, false);
-  } else if (key === 'pimiento') {
-    c.fillStyle = '#3fae3a'; c.strokeStyle = '#1f6b1c';
-    const lobes = [[-0.15, 0.08], [0.15, 0.08], [0, 0.1]];
-    for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.18, s * 0.31, 0, 0, 7); c.stroke(); }
-    for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.18, s * 0.31, 0, 0, 7); c.fill(); }
-    c.fillStyle = 'rgba(255,255,255,.28)';
-    c.beginPath(); c.ellipse(-s * 0.2, -s * 0.02, s * 0.04, s * 0.15, 0, 0, 7); c.fill();
-    c.fillStyle = '#2b7a24'; c.beginPath(); c.ellipse(0, -s * 0.22, s * 0.2, s * 0.07, 0, 0, 7); c.fill();
-    c.strokeStyle = '#2e5e1a'; c.lineWidth = s * 0.07; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(0, -s * 0.24); c.quadraticCurveTo(s * 0.02, -s * 0.42, s * 0.14, -s * 0.46); c.stroke();
-    c.lineWidth = Math.max(1.5, s * 0.04);
-    drawFace(c, s, t, face, 0.04, false);
-  } else if (key === 'fresa') {
-    c.fillStyle = '#e8323c'; c.strokeStyle = '#8f141c';
+    c.strokeStyle = '#d9a800'; c.lineWidth = LW(s) * 0.8;
+    c.beginPath(); c.moveTo(s * 0.12, -s * 0.36); c.quadraticCurveTo(s * 0.26, 0, s * 0.08, s * 0.34); c.stroke();
+    c.strokeStyle = OUT; c.lineWidth = LW(s);
+    c.fillStyle = '#6b4a1e'; roundRect(c, -s * 0.04, -s * 0.58, s * 0.11, s * 0.15, s * 0.03); c.fill(); c.stroke();
+    c.fillStyle = '#4a3212'; c.beginPath(); c.arc(0, s * 0.41, s * 0.04, 0, 7); c.fill();
+  } else if (type === 'pimiento') {
+    const lobes = [[-0.16, 0.06], [0.16, 0.06], [0, 0.08]];
+    c.fillStyle = '#3fae3a';
+    c.lineWidth = LW(s) * 2;
+    for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.2, s * 0.34, 0, 0, 7); c.stroke(); }
+    for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.2, s * 0.34, 0, 0, 7); c.fill(); }
+    c.strokeStyle = '#2b8a26'; c.lineWidth = LW(s) * 0.8;
+    for (const k of [-1, 1]) { c.beginPath(); c.moveTo(k * s * 0.07, -s * 0.18); c.quadraticCurveTo(k * s * 0.1, s * 0.1, k * s * 0.06, s * 0.36); c.stroke(); }
+    c.strokeStyle = OUT; c.lineWidth = LW(s);
+    c.fillStyle = '#2b7a24'; c.beginPath(); c.ellipse(0, -s * 0.27, s * 0.22, s * 0.08, 0, 0, 7); c.fill(); c.stroke();
+    c.lineWidth = s * 0.08; c.lineCap = 'round'; c.strokeStyle = OUT;
+    c.beginPath(); c.moveTo(0, -s * 0.3); c.quadraticCurveTo(s * 0.02, -s * 0.48, s * 0.15, -s * 0.52); c.stroke();
+    c.lineWidth = s * 0.05; c.strokeStyle = '#2e5e1a';
+    c.beginPath(); c.moveTo(0, -s * 0.3); c.quadraticCurveTo(s * 0.02, -s * 0.48, s * 0.15, -s * 0.52); c.stroke();
+  } else if (type === 'fresa') {
+    c.fillStyle = '#e8323c';
     c.beginPath();
-    c.moveTo(0, s * 0.43);
-    c.bezierCurveTo(-s * 0.46, s * 0.08, -s * 0.4, -s * 0.32, 0, -s * 0.26);
-    c.bezierCurveTo(s * 0.4, -s * 0.32, s * 0.46, s * 0.08, 0, s * 0.43);
+    c.moveTo(0, s * 0.46);
+    c.bezierCurveTo(-s * 0.5, s * 0.08, -s * 0.44, -s * 0.36, 0, -s * 0.3);
+    c.bezierCurveTo(s * 0.44, -s * 0.36, s * 0.5, s * 0.08, 0, s * 0.46);
     c.closePath(); c.fill(); c.stroke();
     c.fillStyle = '#ffe27a';
-    for (const [sx, sy] of [[-0.24, -0.08], [0.24, -0.08], [-0.2, 0.12], [0.2, 0.12], [-0.1, 0.27], [0.1, 0.27], [0, 0.34], [-0.28, 0.02], [0.28, 0.02]]) {
-      c.beginPath(); c.ellipse(s * sx, s * sy, s * 0.018, s * 0.028, 0, 0, 7); c.fill();
+    for (const [sx, sy] of [[-0.28, -0.12], [0.28, -0.12], [-0.3, 0.06], [0.3, 0.06], [-0.2, 0.22], [0.2, 0.22], [-0.08, 0.34], [0.08, 0.34]]) {
+      c.beginPath(); c.ellipse(s * sx, s * sy, s * 0.02, s * 0.032, 0, 0, 7); c.fill();
     }
     c.fillStyle = '#2f9a3a';
-    for (let k = 0; k < 5; k++) {
-      const a = -Math.PI / 2 + (k - 2) * 0.55;
-      c.beginPath();
-      c.moveTo(0, -s * 0.27);
-      c.lineTo(Math.cos(a - 0.25) * s * 0.08, -s * 0.27 + Math.sin(a - 0.25) * s * 0.08);
-      c.lineTo(Math.cos(a) * s * 0.2, -s * 0.27 + Math.sin(a) * s * 0.12 + s * 0.05);
-      c.lineTo(Math.cos(a + 0.25) * s * 0.08, -s * 0.27 + Math.sin(a + 0.25) * s * 0.08);
-      c.closePath(); c.fill();
-    }
-    c.fillStyle = '#2f9a3a'; c.fillRect(-s * 0.02, -s * 0.42, s * 0.04, s * 0.14);
-    drawFace(c, s, t, face, -0.04, true);
-  } else {
-    c.fillStyle = '#c8995b'; c.strokeStyle = '#7a5428';
     c.beginPath();
-    c.moveTo(-s * 0.34, -s * 0.05);
-    c.bezierCurveTo(-s * 0.38, -s * 0.3, -s * 0.05, -s * 0.36, s * 0.16, -s * 0.3);
-    c.bezierCurveTo(s * 0.4, -s * 0.24, s * 0.42, s * 0.08, s * 0.32, s * 0.22);
-    c.bezierCurveTo(s * 0.18, s * 0.4, -s * 0.2, s * 0.4, -s * 0.3, s * 0.22);
-    c.bezierCurveTo(-s * 0.38, s * 0.12, -s * 0.32, s * 0.04, -s * 0.34, -s * 0.05);
+    for (let k = 0; k < 6; k++) {
+      const a = Math.PI + k * Math.PI / 5;
+      c.lineTo(Math.cos(a) * s * 0.26, -s * 0.31 + Math.sin(a) * s * 0.1 + s * 0.04);
+      c.lineTo(Math.cos(a + Math.PI / 10) * s * 0.1, -s * 0.33 + Math.sin(a + Math.PI / 10) * s * 0.05);
+    }
+    c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#2f9a3a'; roundRect(c, -s * 0.025, -s * 0.5, s * 0.05, s * 0.16, s * 0.02); c.fill(); c.stroke();
+  } else {
+    c.fillStyle = '#c8995b';
+    c.beginPath();
+    c.moveTo(-s * 0.38, -s * 0.06);
+    c.bezierCurveTo(-s * 0.42, -s * 0.36, -s * 0.05, -s * 0.42, s * 0.18, -s * 0.36);
+    c.bezierCurveTo(s * 0.44, -s * 0.28, s * 0.46, s * 0.08, s * 0.36, s * 0.26);
+    c.bezierCurveTo(s * 0.2, s * 0.44, -s * 0.22, s * 0.44, -s * 0.34, s * 0.26);
+    c.bezierCurveTo(-s * 0.42, s * 0.14, -s * 0.36, s * 0.04, -s * 0.38, -s * 0.06);
     c.closePath(); c.fill(); c.stroke();
     c.fillStyle = '#8a6235';
-    for (const [sx, sy, rr] of [[-0.22, -0.16, 0.03], [0.24, -0.12, 0.025], [0.26, 0.14, 0.03], [-0.24, 0.16, 0.025], [0.05, 0.27, 0.02]]) {
+    for (const [sx, sy, rr] of [[-0.26, -0.22, 0.035], [0.27, -0.2, 0.03], [0.3, 0.16, 0.035], [-0.28, 0.18, 0.03], [0.08, 0.33, 0.025]]) {
       c.beginPath(); c.arc(s * sx, s * sy, s * rr, 0, 7); c.fill();
     }
-    drawFace(c, s, t, face, -0.04, true);
+    c.fillStyle = '#5fbf4a';
+    c.beginPath(); c.ellipse(s * 0.12, -s * 0.44, s * 0.05, s * 0.1, 0.5, 0, 7); c.fill(); c.stroke();
   }
-  c.restore();
 }
 
-function drawEnemy(c, e, x, y, s, t) {
+function villainFace(c, type, s, face, chasing) {
+  const v = VILLAINS[type], ey = v.eyeY * s, dx = v.eyeDX * s;
+  const fx = face ? face.x : 0, fy = face ? face.y : 0;
+  for (const k of [-1, 1]) {
+    c.fillStyle = '#fff7d6'; c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.7;
+    c.beginPath(); c.ellipse(k * dx, ey, s * 0.075, s * 0.08, 0, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = '#d01818'; c.beginPath(); c.arc(k * dx + fx * s * 0.025, ey + fy * s * 0.025, s * 0.035, 0, 7); c.fill();
+  }
+  c.strokeStyle = OUT; c.lineWidth = LW(s) * 1.4; c.lineCap = 'round';
+  for (const k of [-1, 1]) {
+    c.beginPath(); c.moveTo(k * (dx + s * 0.09), ey - s * (chasing ? 0.14 : 0.12)); c.lineTo(k * (dx - s * 0.07), ey - s * 0.07); c.stroke();
+  }
+  const my = ey + s * 0.16, mw = s * (chasing ? 0.17 : 0.13), mh = s * (chasing ? 0.09 : 0.05);
+  c.fillStyle = '#3a0d12'; c.lineWidth = LW(s) * 0.8;
+  c.beginPath(); c.moveTo(-mw, my); c.quadraticCurveTo(0, my + mh * 2, mw, my); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#fff';
+  const n = 4, step = 2 * mw / n;
+  for (let i = 0; i < n; i++) {
+    const x0 = -mw + i * step;
+    c.beginPath(); c.moveTo(x0 + step * 0.1, my); c.lineTo(x0 + step * 0.9, my); c.lineTo(x0 + step / 2, my + mh * 0.75); c.closePath(); c.fill();
+  }
+}
+
+function drawVillain(c, type, x, y, s, t, moving, chasing, face) {
   c.save();
   c.translate(x, y);
-  const chasing = e.state === 'chase';
-  if (chasing) c.translate(Math.sin(t * 40) * s * 0.015, 0);
-  c.fillStyle = 'rgba(0,0,0,.4)';
-  c.beginPath(); c.ellipse(0, s * 0.45, s * 0.33, s * 0.09, 0, 0, 7); c.fill();
-  c.lineWidth = Math.max(1.5, s * 0.035);
-  if (e.type === 'batidora') {
-    c.fillStyle = '#3a3f4b'; c.strokeStyle = '#1b1e25';
-    roundRect(c, -s * 0.3, s * 0.12, s * 0.6, s * 0.32, s * 0.07); c.fill(); c.stroke();
-    c.fillStyle = '#f4c430'; c.beginPath(); c.arc(-s * 0.12, s * 0.28, s * 0.04, 0, 7); c.fill();
-    c.fillStyle = '#4fd1ff'; c.beginPath(); c.arc(0, s * 0.28, s * 0.04, 0, 7); c.fill();
-    c.fillStyle = '#ff5a5a'; c.beginPath(); c.arc(s * 0.12, s * 0.28, s * 0.04, 0, 7); c.fill();
-    c.fillStyle = 'rgba(170,210,255,.32)'; c.strokeStyle = '#cfe6ff';
-    c.beginPath(); c.moveTo(-s * 0.25, s * 0.12); c.lineTo(-s * 0.32, -s * 0.42); c.lineTo(s * 0.32, -s * 0.42); c.lineTo(s * 0.25, s * 0.12); c.closePath(); c.fill(); c.stroke();
-    c.save(); c.translate(0, s * 0.04); c.rotate(e.spin);
-    c.strokeStyle = '#e8e8e8'; c.lineWidth = s * 0.05; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-s * 0.16, 0); c.lineTo(s * 0.16, 0); c.moveTo(0, -s * 0.06); c.lineTo(0, s * 0.06); c.stroke();
-    c.restore();
-    c.fillStyle = '#2a2e38'; roundRect(c, -s * 0.36, -s * 0.52, s * 0.72, s * 0.12, s * 0.04); c.fill();
-    c.fillStyle = '#1b1e25'; roundRect(c, -s * 0.06, -s * 0.6, s * 0.12, s * 0.1, s * 0.03); c.fill();
-  } else {
-    c.fillStyle = '#9aa3ad'; c.strokeStyle = '#4c535c';
-    c.beginPath(); c.moveTo(-s * 0.22, -s * 0.4); c.lineTo(s * 0.22, -s * 0.4); c.lineTo(s * 0.3, s * 0.42); c.lineTo(-s * 0.3, s * 0.42); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#545c66';
-    for (let r = 0; r < 4; r++) for (let k = -1; k <= 1; k++) {
-      c.beginPath(); c.ellipse(k * s * 0.13, s * (0.0 + r * 0.1), s * 0.035, s * 0.02, 0, 0, 7); c.fill();
-    }
-    c.strokeStyle = '#2b2f35'; c.lineWidth = s * 0.07;
-    c.beginPath(); c.arc(0, -s * 0.42, s * 0.14, Math.PI, 0); c.stroke();
-  }
+  c.fillStyle = 'rgba(0,0,0,.35)';
+  c.beginPath(); c.ellipse(0, s * 0.5, s * 0.3, s * 0.08, 0, 0, 7); c.fill();
+  c.translate(0, BOB(t, moving) * s - s * 0.08);
+  if (chasing) c.translate(Math.sin(t * 40) * s * 0.012, 0);
+  drawLegs(c, s, t, moving, 0.36, 0.13);
+  drawArms(c, s, t, chasing, 0.3, 0.02);
+  villainBody(c, type, s);
+  villainFace(c, type, s, face, chasing);
   c.restore();
 }
 
-function drawEnemyEyes(c, e, x, y, s, t) {
-  const glow = e.state === 'chase' ? 1 : 0.65;
+/* ojos que brillan en la oscuridad */
+function drawVillainEyes(c, e, x, y, s) {
+  const v = VILLAINS[e.type];
+  const by = y + BOB(e.anim, e.moving) * s - s * 0.08 + v.eyeY * s;
+  const fx = e.face ? e.face.x : 0, fy = e.face ? e.face.y : 0;
   c.save();
-  c.shadowColor = '#ff2a2a'; c.shadowBlur = s * 0.4 * glow;
-  c.fillStyle = e.state === 'chase' ? '#ff3030' : '#ff7070';
-  if (e.type === 'batidora') {
-    roundRect(c, x - s * 0.2, y - s * 0.26, s * 0.4, s * 0.08, s * 0.04); c.fill();
-    c.fillStyle = '#fff'; const sx = Math.sin(t * 2) * s * 0.13;
-    c.beginPath(); c.arc(x + sx, y - s * 0.22, s * 0.025, 0, 7); c.fill();
-  } else {
-    for (const k of [-1, 1]) { c.beginPath(); c.arc(x + k * s * 0.1, y - s * 0.2, s * 0.05, 0, 7); c.fill(); }
+  c.shadowColor = '#ff2a2a'; c.shadowBlur = s * (e.state === 'chase' ? 0.5 : 0.3);
+  c.fillStyle = e.state === 'chase' ? '#ff3030' : '#ff6a6a';
+  for (const k of [-1, 1]) {
+    c.beginPath(); c.arc(x + k * v.eyeDX * s + fx * s * 0.025, by + fy * s * 0.025, s * 0.04, 0, 7); c.fill();
   }
   c.restore();
 }
@@ -811,7 +871,7 @@ function drawExit(t) {
 
 function drawCage(p, t) {
   const x = px(p.x), y = py(p.y), s = TS;
-  drawChar(ctx, p.ch.key, x, y, s * 0.9, t, false, { x: 0, y: 1 }, 0.75);
+  drawHero(ctx, p.id, x, y, s * 0.9, t, false, { x: 0, y: 1 }, 0.75, true);
   ctx.save();
   ctx.strokeStyle = '#c9ced6'; ctx.lineWidth = Math.max(1.5, s * 0.05);
   ctx.strokeRect(x - s * 0.42, y - s * 0.5, s * 0.84, s * 0.95);
@@ -859,9 +919,10 @@ function render() {
   const actors = [];
   for (const p of G.players) if (!p.hidden && !p.safe && !p.caught) actors.push({ y: p.y, f: () => {
     if (p.inv > 0 && Math.sin(t * 30) > 0) return;
-    drawChar(ctx, p.ch.key, px(p.x), py(p.y), TS * 0.95, p.t, p.moving, p.face);
+    const scared = G.enemies.some(e => e.state === 'chase' && e.target === p);
+    drawHero(ctx, p.id, px(p.x), py(p.y), TS * 0.95, p.t, p.moving, p.face, 1, scared);
   } });
-  for (const e of G.enemies) actors.push({ y: e.y, f: () => drawEnemy(ctx, e, px(e.x), py(e.y), TS * 1.05, t) });
+  for (const e of G.enemies) actors.push({ y: e.y, f: () => drawVillain(ctx, e.type, px(e.x), py(e.y), TS * 1.3, e.anim, e.moving, e.state === 'chase', e.face) });
   actors.sort((a, b) => a.y - b.y).forEach(a => a.f());
 
   if (S.dark) {
@@ -890,7 +951,7 @@ function render() {
 
   for (const it of G.items) if (!it.got) drawItem(it, t);
   for (const p of G.players) if (p.caught) drawCage(p, t);
-  for (const e of G.enemies) drawEnemyEyes(ctx, e, px(e.x), py(e.y), TS * 1.05, t);
+  for (const e of G.enemies) drawVillainEyes(ctx, e, px(e.x), py(e.y), TS * 1.3);
 
   // nombres
   ctx.font = `bold ${Math.max(9, TS * 0.3)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -933,13 +994,15 @@ const overlay = document.getElementById('overlay');
 function showOverlay(html) { overlay.innerHTML = `<div class="panel">${html}</div>`; overlay.classList.remove('off'); document.getElementById('touch').style.display = 'none'; }
 function hideOverlay() { overlay.classList.add('off'); overlay.innerHTML = ''; }
 
-function charPreview(k) {
+function preview(draw, size = 80) {
   const c = document.createElement('canvas');
-  c.width = 160; c.height = 160; c.style.width = '80px'; c.style.height = '80px';
+  c.width = size * 2; c.height = size * 2; c.style.width = size + 'px'; c.style.height = size + 'px';
   const x = c.getContext('2d'); x.scale(2, 2);
-  drawChar(x, CHARS[k].key, 40, 42, 66, 1, false, { x: 0, y: 0.6 });
+  draw(x, size);
   return c;
 }
+const heroPreview = k => preview((x, z) => drawHero(x, k, z / 2, z * 0.52, z * 0.85, 1, false, { x: 0, y: 0.6 }));
+const villainPreview = (type, z = 80) => preview((x, zz) => drawVillain(x, type, zz / 2, zz * 0.5, zz * 0.72, 1, false, true, { x: 0, y: 0.6 }), z);
 
 function showMenu() {
   S.screen = 'menu'; G = null; drawHud();
@@ -948,7 +1011,8 @@ function showMenu() {
     : `<button disabled style="opacity:.4">🔒 ${i + 1}</button>`).join('');
   showOverlay(`
     <h1>🌙 La Huerta de Noche</h1>
-    <p>Cuando se apagan las luces, la Batidora y el Rallador salen a cazar. Recoged todos los objetos de cada fase, escondeos en las cajas cuando os vean y escapad por la puerta. Si pillan a un compañero, tocadle para liberarle.</p>
+    <p>Cuando se apagan las luces, el Plátano, el Pimiento, la Fresa y la Patata salen a cazar. Recoged todos los objetos de cada fase, escondeos en las cajas cuando os vean y escapad por la puerta. Si pillan a un compañero, tocadle para liberarle.</p>
+    <div class="row" id="villains"></div>
     <div class="row"><span class="lbl">Jugadores:</span>${[1, 2, 3, 4].map(n => `<button data-np="${n}" class="${S.numPlayers === n ? 'sel' : ''}">${n}</button>`).join('')}</div>
     <div class="cards" id="cards"></div>
     <div class="row"><span class="lbl">Fase:</span>${phases}</div>
@@ -960,9 +1024,17 @@ function showMenu() {
   CHARS.forEach((ch, k) => {
     const d = document.createElement('div');
     d.className = 'card' + (k < S.numPlayers ? ' on' : '');
-    d.appendChild(charPreview(k));
+    d.appendChild(heroPreview(k));
     d.insertAdjacentHTML('beforeend', `<b style="color:${ch.color}">J${k + 1} · ${ch.name}</b><span class="keys">${CONTROLS[k].label}</span>`);
     cards.appendChild(d);
+  });
+  const vrow = document.getElementById('villains');
+  Object.keys(VILLAINS).forEach(type => {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:84px;font-size:12px;color:' + VILLAINS[type].color;
+    d.appendChild(villainPreview(type, 72));
+    d.insertAdjacentHTML('beforeend', `<b>${VILLAINS[type].name}</b>`);
+    vrow.appendChild(d);
   });
   overlay.querySelectorAll('[data-np]').forEach(b => b.onclick = () => { S.numPlayers = +b.dataset.np; showMenu(); });
   overlay.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.startPhase = +b.dataset.ph; showMenu(); });
@@ -973,14 +1045,22 @@ function showMenu() {
 function showIntro(i) {
   S.screen = 'intro';
   const ph = PHASES[i];
-  const n = ph.enemies.length + (S.numPlayers >= 3 && i >= 1 ? 1 : 0);
   showOverlay(`
     <h2>Fase ${i + 1} de ${PHASES.length}: ${ph.name}</h2>
     <p style="font-size:40px;margin:4px">${ph.icon}</p>
     <p>${ph.goal}</p>
-    <p>Objetivo: <b>${ph.count} ${ph.item}</b> · Cazadores: <b>${n}</b></p>
+    <p>Objetivo: <b>${ph.count} ${ph.item}</b> · Villanos: <b>${ph.enemies.length}</b></p>
+    <div class="row" id="pv"></div>
     <div class="row"><button class="big" data-primary id="go">¡Vamos!</button><button id="mn">Menú</button></div>
   `);
+  const pv = document.getElementById('pv');
+  ph.enemies.forEach(type => {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:120px;font-size:12px';
+    d.appendChild(villainPreview(type, 76));
+    d.insertAdjacentHTML('beforeend', `<b style="color:${VILLAINS[type].color}">${VILLAINS[type].name}</b><br><small>${VILLAINS[type].desc}</small>`);
+    pv.appendChild(d);
+  });
   document.getElementById('go').onclick = () => { audio(); startPhase(i); };
   document.getElementById('mn').onclick = showMenu;
 }
@@ -992,7 +1072,7 @@ function phaseComplete() {
     S.screen = 'win'; SFX.win();
     showOverlay(`
       <h1>🏆 ¡Habéis sobrevivido a todas las noches!</h1>
-      <p>Plátano, Pimiento, Fresa y Patata vuelven a casa sanos y salvos.</p>
+      <p>Nico, Lola, Max y Bea han escapado del Plátano, el Pimiento, la Fresa y la Patata.</p>
       <div class="row"><button class="big" data-primary id="mn">Volver al menú</button></div>`);
     document.getElementById('mn').onclick = showMenu;
     return;
