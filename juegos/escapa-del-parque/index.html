@@ -81,8 +81,8 @@ const VNAME = t => `${VILLAINS[t].art} ${VILLAINS[t].name}`;
 const cap = str => str.charAt(0).toUpperCase() + str.slice(1);
 
 const CONTROLS = [
+  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', act: 'Space', label: 'Flechas ↑/↓ andar · ←/→ girar · Espacio esconderse', key: 'Espacio' },
   { up: 'KeyW',    down: 'KeyS',      left: 'KeyA',      right: 'KeyD',       act: 'KeyE',  label: 'W/S andar · A/D girar · E esconderse', key: 'E' },
-  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', act: 'Enter', label: '↑/↓ andar · ←/→ girar · Enter esconderse', key: 'Enter' },
   { up: 'KeyI',    down: 'KeyK',      left: 'KeyJ',      right: 'KeyL',       act: 'KeyO',  label: 'I/K andar · J/L girar · O esconderse', key: 'O' },
   { up: 'KeyT',    down: 'KeyG',      left: 'KeyF',      right: 'KeyH',       act: 'KeyY',  label: 'T/G andar · F/H girar · Y esconderse', key: 'Y' },
 ];
@@ -334,6 +334,7 @@ const keys = new Set();
 const tapped = new Set();   // pulsaciones rápidas entre fotogramas
 window.addEventListener('keydown', e => {
   audio();
+  if (e.target && e.target.tagName === 'INPUT') { if (e.code === 'Enter') { const b = document.getElementById('jn'); if (b) b.click(); } return; }
   if (S.screen === 'play' && (e.code === 'Escape' || e.code === 'KeyP')) { pauseGame(); e.preventDefault(); return; }
   if (S.screen !== 'play' && (e.code === 'Enter' || e.code === 'Space')) {
     const b = document.querySelector('#overlay [data-primary]');
@@ -344,7 +345,7 @@ window.addEventListener('keydown', e => {
   if (S.screen === 'play' && /^(Arrow|Space|Enter)/.test(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
-window.addEventListener('blur', () => { keys.clear(); if (S.screen === 'play') pauseGame(); });
+window.addEventListener('blur', () => { keys.clear(); if (S.screen === 'play' && NET.mode === 'off') pauseGame(); });
 
 function gamepads() {
   const list = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -377,12 +378,13 @@ const isTouch = () => window.matchMedia('(pointer: coarse)').matches || touch.us
 /* fwd: +1 adelante, -1 atrás · turn: +1 derecha, -1 izquierda */
 function readInput(i) {
   let fwd = 0, turn = 0, act = false;
-  const c = CONTROLS[i];
-  if (keys.has(c.up)) fwd += 1;
-  if (keys.has(c.down)) fwd -= 1;
-  if (keys.has(c.left)) turn -= 1;
-  if (keys.has(c.right)) turn += 1;
-  act = keys.has(c.act) || tapped.has(c.act);
+  for (const c of (NET.mode !== 'off' ? [CONTROLS[0], CONTROLS[1]] : [CONTROLS[i]])) {
+    if (keys.has(c.up)) fwd += 1;
+    if (keys.has(c.down)) fwd -= 1;
+    if (keys.has(c.left)) turn -= 1;
+    if (keys.has(c.right)) turn += 1;
+    act = act || keys.has(c.act) || tapped.has(c.act);
+  }
   const gp = gamepads()[i];
   if (gp) {
     const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, rx = gp.axes[2] || 0;
@@ -403,20 +405,27 @@ function readInput(i) {
 
 /* ---------- partida ---------- */
 const SPAWN_ANGLE = 0.35;
-function startPhase(i) {
+/* slot: qué explorador es · local: se maneja desde este dispositivo · ctrl: qué teclas usa */
+function newPlayer(slot, m, local, ctrl) {
+  const sp = m.spawns[slot % m.spawns.length];
+  return {
+    id: slot, ch: CHARS[slot], x: sp.c + 0.5, y: sp.r + 0.5, a: SPAWN_ANGLE,
+    hidden: null, caught: false, safe: false, inv: 0,
+    moving: false, t: Math.random() * 10, prevAct: true, flash: 0,
+    model: null, cage: null, light: null,
+    local, ctrl, peer: null, away: false, tx: sp.c + 0.5, ty: sp.r + 0.5, ta: SPAWN_ANGLE,
+  };
+}
+
+function startPhase(i, opts = {}) {
   const ph = PHASES[i];
   const m = parseMap(ph.map);
+  const online = NET.mode !== 'off';
   const players = [];
-  for (let k = 0; k < S.numPlayers; k++) {
-    const sp = m.spawns[k % m.spawns.length];
-    players.push({
-      id: k, ch: CHARS[k], x: sp.c + 0.5, y: sp.r + 0.5, a: SPAWN_ANGLE,
-      hidden: null, caught: false, safe: false, inv: 0,
-      moving: false, t: Math.random() * 10, prevAct: true, flash: 0,
-      model: null, cage: null, light: null,
-    });
-  }
-  const crowd = S.numPlayers >= 3 ? 1.05 : 1;   // con más jugadores, villanos algo más rápidos
+  if (online) { const me = newPlayer(opts.slot || 0, m, true, 0); me.peer = NET.me; players.push(me); }
+  else for (let k = 0; k < S.numPlayers; k++) players.push(newPlayer(k, m, true, k));
+  if (NET.mode === 'host') { NET.ep++; NET.rs = 0; }
+  const crowd = (online ? Object.keys(NET.slots).length : S.numPlayers) >= 3 ? 1.05 : 1;   // con más jugadores, villanos algo más rápidos
   const easy = S.diff === 'facil';
   const enemies = ph.enemies.map((type, j) => {
     const sp = m.enemySpawns[j % m.enemySpawns.length], v = VILLAINS[type];
@@ -428,8 +437,8 @@ function startPhase(i) {
     };
   });
   G = {
-    i, ph, m, players, enemies,
-    items: placeItems(m, ph.count),
+    i, ph, m, players, enemies, views: players.slice(),
+    items: opts.items ? opts.items.map(([x, y]) => ({ x: x / 10, y: y / 10, got: false, t: Math.random() * 6, mesh: null })) : placeItems(m, ph.count),
     collected: 0, open: false, time: 0, start: easy ? 4.5 : 3.5, lives: easy ? 5 : 3,
     msg: '', msgT: 0, heart: 0, hudT: 0, mini: null, caughtTotal: 0, exitObj: null, exitOpen3D: false,
   };
@@ -441,7 +450,7 @@ function startPhase(i) {
   banner('¡Escondeos!', 2.2);
 }
 
-function banner(t, d = 2) { G.msg = t; G.msgT = d; }
+function banner(t, d = 2) { G.msg = t; G.msgT = d; if (NET.mode === 'host') NET.msgId++; }
 
 function solid(c, r) {
   if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return true;
@@ -480,7 +489,7 @@ function movePlayer(p, dx, dy) {
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const active = p => !p.caught && !p.safe && !p.hidden;
+const active = p => !p.caught && !p.safe && !p.hidden && !p.away;
 const tileOf = o => ({ c: Math.floor(o.x), r: Math.floor(o.y) });
 
 function lineOfSight(a, b) {
@@ -514,7 +523,7 @@ function updatePlayer(p, dt) {
   p.t += dt;
   if (p.inv > 0) p.inv -= dt;
   if (p.flash > 0) p.flash -= dt;
-  const inp = readInput(p.id);
+  const inp = readInput(p.ctrl);
   const pressed = inp.act && !p.prevAct;
   p.prevAct = inp.act;
   if (p.safe) { p.moving = false; return; }
@@ -528,6 +537,20 @@ function updatePlayer(p, dt) {
     const sp = PLAYER_SPEED * (f < 0 ? 0.6 : 1) * f * dt;
     movePlayer(p, Math.cos(p.a) * sp, Math.sin(p.a) * sp);
   }
+}
+
+/* jugadores de otros dispositivos: se mueven suavemente hacia su última posición conocida */
+function updateRemote(p, dt) {
+  p.t += dt;
+  if (p.inv > 0) p.inv -= dt;
+  const k = Math.min(1, dt * 14);
+  p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k;
+  let d = p.ta - p.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  p.a += d * k;
+}
+
+/* recoger objetos, rescatar y escapar */
+function interact(p) {
   for (const it of G.items) {
     if (!it.got && dist(p, it) < 0.7) {
       it.got = true; G.collected++; SFX.collect();
@@ -628,10 +651,11 @@ function updateEnemyAI(e, dt) {
 function loseLife() {
   G.lives--;
   if (G.lives <= 0) { gameOver(); return; }
-  G.players.forEach((p, k) => {
+  NET.rs++;
+  G.players.forEach(p => {
     if (p.safe) return;
-    const sp = G.m.spawns[k % G.m.spawns.length];
-    p.x = sp.c + 0.5; p.y = sp.r + 0.5; p.a = SPAWN_ANGLE; p.caught = false; p.hidden = null; p.inv = 2.5; p.prevAct = true;
+    const sp = G.m.spawns[p.id % G.m.spawns.length];
+    p.x = p.tx = sp.c + 0.5; p.y = p.ty = sp.r + 0.5; p.a = p.ta = SPAWN_ANGLE; p.caught = false; p.hidden = null; p.inv = 2.5; p.prevAct = true;
   });
   G.enemies.forEach((e, j) => {
     const sp = G.m.enemySpawns[j % G.m.enemySpawns.length];
@@ -643,15 +667,22 @@ function loseLife() {
 
 function update(dt) {
   G.time += dt;
-  if (G.start > 0) {
+  const auth = NET.mode !== 'client';      // en línea, solo quien creó la sala mueve villanos y decide
+  if (auth && G.start > 0) {
     const before = Math.ceil(G.start);
     G.start -= dt;
     if (G.start > 0 && Math.ceil(G.start) !== before) tone(440, .08, 'square', .05);
     if (G.start <= 0) { banner('¡Ya vienen!', 1.4); tone(880, .15, 'square', .07); }
   }
-  for (const p of G.players) updatePlayer(p, dt);
+  for (const p of G.players) { if (p.local) updatePlayer(p, dt); else updateRemote(p, dt); }
   tapped.clear(); touch.tap = false;
-  for (const e of G.enemies) updateEnemy(e, dt);
+  if (auth) {
+    for (const p of G.players) if (active(p)) interact(p);
+    for (const e of G.enemies) updateEnemy(e, dt);
+  } else {
+    const k = Math.min(1, dt * 12);
+    for (const e of G.enemies) { e.anim += dt; if (num(e.tx)) { e.x += (e.tx - e.x) * k; e.y += (e.ty - e.y) * k; } }
+  }
   for (const it of G.items) it.t += dt;
   if (G.msgT > 0) G.msgT -= dt;
 
@@ -660,9 +691,11 @@ function update(dt) {
     if (G.heart <= 0) { SFX.heart(); G.heart = 0.75; }
   }
 
-  const alive = G.players.filter(p => !p.caught && !p.safe);
-  if (alive.length === 0) {
-    if (G.players.some(p => p.safe)) phaseComplete(); else loseLife();
+  if (auth) {
+    const alive = G.players.filter(p => !p.caught && !p.safe && !p.away);
+    if (alive.length === 0) {
+      if (G.players.some(p => p.safe)) phaseComplete(); else loseLife();
+    }
   }
 
   G.hudT -= dt;
@@ -948,18 +981,34 @@ function buildWorld() {
 
   // personajes
   cams.length = 0;
-  for (const p of G.players) {
-    p.model = makeHero(p.id); scene.add(p.model);
-    p.cage = makeCage(); p.cage.visible = false; scene.add(p.cage);
-    if (dark) { p.light = new THREE.PointLight(0xfff0d0, 1.3, 15); scene.add(p.light); }
-    cams.push(new THREE.PerspectiveCamera(75, 1, 0.08, 120));
-  }
+  for (const p of G.players) attachModel(p);
+  for (const p of G.views) cams.push(new THREE.PerspectiveCamera(75, 1, 0.08, 120));
   for (const e of G.enemies) { e.model = makeVillain(e.type); scene.add(e.model); }
+}
+
+function attachModel(p) {
+  if (!scene) return;
+  p.model = makeHero(p.id); scene.add(p.model);
+  p.cage = makeCage(); p.cage.visible = false; scene.add(p.cage);
+  if (S.dark && p.local) { p.light = new THREE.PointLight(0xfff0d0, 1.3, 15); scene.add(p.light); }
+}
+function addRemotePlayer(peer, slot) {
+  const p = newPlayer(slot, G.m, false, -1); p.peer = peer;
+  G.players.push(p); attachModel(p);
+  return p;
+}
+function removePlayer(peer) {
+  const k = G.players.findIndex(p => p.peer === peer && !p.local);
+  if (k < 0) return;
+  const p = G.players[k];
+  if (scene) { if (p.model) scene.remove(p.model); if (p.cage) scene.remove(p.cage); }
+  G.players.splice(k, 1);
 }
 
 function sync3D(dt) {
   const t = G.time;
   for (const p of G.players) {
+    if (!p.model) attachModel(p);
     const md = p.model, u = md.userData;
     md.position.set(p.x * W, 0, p.y * W);
     md.rotation.y = Math.atan2(Math.cos(p.a), Math.sin(p.a));
@@ -1010,7 +1059,7 @@ function camPos(p) {
 }
 
 function viewports() {
-  const n = G.players.length;
+  const n = G.views.length;
   if (n === 1) return [{ x: 0, y: 0, w: CW, h: CH }];
   if (n === 2) return [{ x: 0, y: 0, w: CW / 2, h: CH }, { x: CW / 2, y: 0, w: CW / 2, h: CH }];
   const w = CW / 2, h = CH / 2;
@@ -1023,7 +1072,7 @@ function render3D() {
   renderer.setClearColor(0x05050f); renderer.clear();
   renderer.setScissorTest(true);
   const vps = viewports();
-  G.players.forEach((p, i) => {
+  G.views.forEach((p, i) => {
     const vp = vps[i], cam = cams[i];
     cam.aspect = vp.w / vp.h; cam.fov = vp.w / vp.h < 1 ? 85 : 72; cam.updateProjectionMatrix();
     if (p.safe) {           // quien ya ha escapado ve el parque desde arriba
@@ -1033,7 +1082,7 @@ function render3D() {
       cam.position.set(cp.x, cp.y, cp.z);
       cam.lookAt(cp.x + Math.cos(p.a), cp.y - 0.06, cp.z + Math.sin(p.a));
     }
-    for (const q of G.players) q.model.visible = q.model.userData.show && q !== p;
+    for (const q of G.players) if (q.model) q.model.visible = q.model.userData.show && q !== p;
     renderer.setViewport(vp.x, CH - vp.y - vp.h, vp.w, vp.h);
     renderer.setScissor(vp.x, CH - vp.y - vp.h, vp.w, vp.h);
     renderer.render(scene, cam);
@@ -1090,9 +1139,9 @@ function drawViewHud(p, vp) {
     label('✅ ¡A salvo! Mira el parque desde arriba', cx, vp.y + vp.h * 0.12, fs, '#9dffb0');
   } else if (p.hidden) {
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(vp.x, vp.y, vp.w, vp.h * 0.12); ctx.fillRect(vp.x, vp.y + vp.h * 0.88, vp.w, vp.h * 0.12);
-    label(`Escondido · ${p.id === 0 && isTouch() ? 'toca Esconder' : 'pulsa ' + CONTROLS[p.id].key} para salir`, cx, vp.y + vp.h * 0.82, fs, '#ffe9a8');
+    label(`Escondido · ${p.ctrl === 0 && isTouch() ? 'toca Esconder' : 'pulsa ' + CONTROLS[p.ctrl].key} para salir`, cx, vp.y + vp.h * 0.82, fs, '#ffe9a8');
   } else if (nearestBox(p)) {
-    label(`${p.id === 0 && isTouch() ? 'Toca Esconder' : 'Pulsa ' + CONTROLS[p.id].key} para esconderte`, cx, vp.y + vp.h * 0.82, fs, '#ffe9a8');
+    label(`${p.ctrl === 0 && isTouch() ? 'Toca Esconder' : 'Pulsa ' + CONTROLS[p.ctrl].key} para esconderte`, cx, vp.y + vp.h * 0.82, fs, '#ffe9a8');
   }
 
   // mapa pequeño
@@ -1121,15 +1170,15 @@ function renderHud() {
   if (!G) return;
   if (!GLOK) { label('Este dispositivo no puede mostrar gráficos 3D', CW / 2, CH / 2, 20); return; }
   const vps = viewports();
-  G.players.forEach((p, i) => drawViewHud(p, vps[i]));
-  if (G.players.length === 3) {       // el hueco libre muestra el mapa en grande
+  G.views.forEach((p, i) => drawViewHud(p, vps[i]));
+  if (G.views.length === 3) {       // el hueco libre muestra el mapa en grande
     const vp = vps[3]; ctx.fillStyle = '#0b0b18'; ctx.fillRect(vp.x, vp.y, vp.w, vp.h);
     const mw = vp.w * 0.8, mh = mw * ROWS / COLS; ctx.drawImage(G.mini, vp.x + vp.w * 0.1, vp.y + (vp.h - mh) / 2, mw, mh);
   }
-  if (G.players.length > 1) {
+  if (G.views.length > 1) {
     ctx.strokeStyle = '#0b0b18'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(CW / 2, 0); ctx.lineTo(CW / 2, CH);
-    if (G.players.length > 2) { ctx.moveTo(0, CH / 2); ctx.lineTo(CW, CH / 2); }
+    if (G.views.length > 2) { ctx.moveTo(0, CH / 2); ctx.lineTo(CW, CH / 2); }
     ctx.stroke();
   }
   if (isTouch() && CH > CW * 1.1) label('📱↻ Gira el móvil para ver mejor', CW / 2, CH * 0.35, 18, '#f4c430');
@@ -1188,6 +1237,7 @@ function showOverlay(html) { overlay.innerHTML = `<div class="panel">${html}</di
 function hideOverlay() { overlay.classList.add('off'); overlay.innerHTML = ''; }
 
 function showMenu() {
+  if (NET.mode !== 'off') return showLobby();
   S.screen = 'menu'; G = null; disposeScene(); drawHud();
   const phases = PHASES.map((p, i) => i <= S.unlocked
     ? `<button data-ph="${i}" class="${S.startPhase === i ? 'sel' : ''}">${i + 1}. ${p.name}</button>`
@@ -1204,13 +1254,26 @@ function showMenu() {
     <div class="row"><span class="lbl">Dificultad:</span><button data-df="facil" class="${S.diff === 'facil' ? 'sel' : ''}">Fácil · 5 ❤️</button><button data-df="normal" class="${S.diff === 'normal' ? 'sel' : ''}">Normal · 3 ❤️</button></div>
     <div class="row"><span class="lbl">Modo noche:</span><button id="dk" class="${S.dark ? 'sel' : ''}">${S.dark ? 'Sí (a oscuras, con linterna)' : 'No (de día)'}</button></div>
     <div class="row"><button class="big" data-primary id="go">¡Jugar!</button></div>
-    <small>Con varios jugadores la pantalla se divide. Mandos: palanca para andar y girar, botón A para esconderse. En móvil o tablet: joystick y botón, un jugador. Pausa: Esc o P.</small>
+    <div class="row"><span class="lbl">Con amigos en línea:</span>${NET.api
+      ? `<button id="mk">Crear sala</button><input id="code" maxlength="4" placeholder="CÓDIGO" autocomplete="off" style="font:inherit;font-size:16px;width:96px;padding:9px;border-radius:12px;border:2px solid #4b4b85;background:#101024;color:#fff;text-align:center;text-transform:uppercase"><button id="jn">Unirse a una sala</button>`
+      : `<small>Disponible cuando abrís todos el juego desde su enlace de Claude.</small>`}</div>
+    ${NET.err ? `<p style="color:#ff8a8a">${NET.err}</p>` : ''}
+    <small>Con varios jugadores la pantalla se divide. Mandos: palanca para andar y girar, botón A para esconderse. En móvil o tablet: joystick y botón, un jugador. En el ordenador, el jugador 1 usa las flechas y la barra espaciadora. Pausa: Esc o P.</small>
   `);
   overlay.querySelectorAll('[data-np]').forEach(b => b.onclick = () => { S.numPlayers = +b.dataset.np; showMenu(); });
   overlay.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.startPhase = +b.dataset.ph; showMenu(); });
   overlay.querySelectorAll('[data-df]').forEach(b => b.onclick = () => { S.diff = b.dataset.df; showMenu(); });
   document.getElementById('dk').onclick = () => { S.dark = !S.dark; showMenu(); };
   document.getElementById('go').onclick = () => { audio(); showIntro(S.startPhase); };
+  if (NET.api) {
+    document.getElementById('mk').onclick = () => { audio(); netJoin(randomCode(), true); };
+    document.getElementById('jn').onclick = () => {
+      audio();
+      const code = document.getElementById('code').value.trim().toLowerCase();
+      if (!/^[a-z0-9]{3,6}$/.test(code)) { NET.err = 'Escribe el código de la sala (4 letras).'; showMenu(); return; }
+      netJoin(code, false);
+    };
+  }
 }
 
 function showIntro(i) {
@@ -1270,15 +1333,245 @@ function pauseGame() {
   S.screen = 'pause';
   showOverlay(`
     <h2>⏸ Pausa</h2>
-    <div class="row"><button class="big" data-primary id="ct">Continuar</button><button id="mn">Salir al menú</button></div>`);
+    <div class="row"><button class="big" data-primary id="ct">Continuar</button><button id="mn">${NET.mode === 'client' ? 'Salir de la sala' : NET.mode === 'host' ? 'Volver a la sala' : 'Salir al menú'}</button></div>`);
   document.getElementById('ct').onclick = () => {
     hideOverlay(); S.screen = 'play';
     for (const p of G.players) p.prevAct = true;
     document.getElementById('touch').style.display = isTouch() ? 'block' : 'none';
   };
-  document.getElementById('mn').onclick = showMenu;
+  document.getElementById('mn').onclick = NET.mode === 'client' ? netLeave : showMenu;
 }
 window.pauseGame = pauseGame;
+
+/* =========================================================
+   JUEGO EN LÍNEA
+   Cada jugador mueve a su explorador en su dispositivo y publica dónde está.
+   Quien crea la sala mueve a los villanos y decide qué se recoge y a quién pillan.
+   ========================================================= */
+const NET = { api: null, room: null, mode: 'off', code: '', me: null, slots: {}, hostSlots: {}, ep: 0, rs: 0, msgId: 0, lastMsg: 0, shown: '', hadHost: false, noHost: 0, lobbyT: 0, lobbySig: '', err: '' };
+const r2 = v => Math.round(v * 100) / 100;
+const num = v => typeof v === 'number' && isFinite(v);
+const randomCode = () => Array.from({ length: 4 }, () => 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)]).join('');
+
+(async function netInit() {
+  const has = () => window.claude && typeof window.claude.use === 'function';
+  for (let k = 0; k < 20 && !has(); k++) await new Promise(r => setTimeout(r, 250));
+  if (!has()) return;
+  try {
+    const api = await window.claude.use('room');
+    if (api) { NET.api = api; if (S.screen === 'menu') showMenu(); }
+  } catch (e) { /* sin sala: el juego funciona igual en local */ }
+})();
+
+async function netJoin(code, asHost) {
+  try {
+    const room = await NET.api.join('parque-' + code);
+    Object.assign(NET, { room, mode: asHost ? 'host' : 'client', code, slots: {}, hostSlots: {}, ep: asHost ? 0 : -1, rs: 0, shown: '', hadHost: false, noHost: 0, lostAt: 0, me: null, err: '', lobbySig: '' });
+    G = null; disposeScene();
+    showLobby();
+  } catch (e) {
+    NET.err = 'No se ha podido entrar en la sala. Comprueba que os han invitado al juego con permiso para participar.';
+    showMenu();
+  }
+}
+async function netLeave() {
+  const r = NET.room; NET.room = null; NET.mode = 'off';
+  if (r) { try { await r.leave(); } catch (e) { /* ya fuera */ } }
+  showMenu();
+}
+
+function showLobby() {
+  S.screen = 'lobby';
+  const host = NET.mode === 'host';
+  if (host) { G = null; disposeScene(); }
+  drawHud();
+  const phases = PHASES.map((p, i) => i <= S.unlocked
+    ? `<button data-ph="${i}" class="${S.startPhase === i ? 'sel' : ''}">${i + 1}. ${p.name}</button>`
+    : `<button disabled style="opacity:.4">🔒 ${i + 1}</button>`).join('');
+  showOverlay(`
+    <h2>🎮 Sala <span style="letter-spacing:5px;color:#f4c430">${NET.code.toUpperCase()}</span></h2>
+    ${host ? `<p>Dile este código a tus amigos. Tienen que abrir este mismo juego, escribir el código y pulsar «Unirse a una sala». Caben 4 jugadores.</p>`
+           : `<p>Esperando a que quien ha creado la sala empiece la partida…</p>`}
+    <div class="cards" id="plist"></div>
+    ${host ? `<div class="row"><span class="lbl">Fase:</span>${phases}</div>
+    <div class="row"><span class="lbl">Dificultad:</span><button data-df="facil" class="${S.diff === 'facil' ? 'sel' : ''}">Fácil · 5 ❤️</button><button data-df="normal" class="${S.diff === 'normal' ? 'sel' : ''}">Normal · 3 ❤️</button></div>
+    <div class="row"><button class="big" data-primary id="go">¡Empezar!</button></div>` : ''}
+    <div class="row"><button id="lv">Salir de la sala</button></div>
+    <small>Cada uno juega en su pantalla: flechas ↑/↓ para andar y ←/→ para girar, barra espaciadora para esconderse (también valen W/A/S/D y E). En tablet, joystick y botón.</small>`);
+  overlay.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { S.startPhase = +b.dataset.ph; showLobby(); });
+  overlay.querySelectorAll('[data-df]').forEach(b => b.onclick = () => { S.diff = b.dataset.df; showLobby(); });
+  if (host) document.getElementById('go').onclick = () => { audio(); startPhase(S.startPhase); };
+  document.getElementById('lv').onclick = netLeave;
+  NET.lobbySig = ''; refreshLobby();
+}
+function refreshLobby() {
+  const el = document.getElementById('plist'); if (!el) return;
+  const slots = NET.mode === 'host' ? NET.slots : NET.hostSlots;
+  const list = Object.keys(slots).filter(k => num(slots[k]) && CHARS[slots[k]]).sort((a, b) => slots[a] - slots[b]);
+  const sig = list.map(k => k + slots[k]).join('|') + '|' + NET.me + '|' + (NET.noHost > 6);
+  if (sig === NET.lobbySig) return;
+  NET.lobbySig = sig;
+  el.innerHTML = list.length
+    ? list.map(k => { const ch = CHARS[slots[k]]; return `<div class="card on">${heroImg(slots[k])}<b style="color:${ch.color}">${ch.name}${k === NET.me ? ' (tú)' : ''}</b></div>`; }).join('')
+    : `<p>${NET.mode === 'client' && NET.noHost > 6 ? 'No encuentro esa sala. Comprueba el código con quien la ha creado.' : 'Conectando…'}</p>`;
+}
+
+function hostState() {
+  const sc = S.screen;
+  const o = { st: sc === 'play' || sc === 'pause' ? 'play' : sc === 'over' ? 'over' : sc === 'win' ? 'win' : sc === 'lobby' ? 'lobby' : 'done', ep: NET.ep, df: S.diff, sl: NET.slots };
+  if (G) {
+    o.ph = G.i; o.op = G.open ? 1 : 0; o.lv = G.lives; o.cd = G.start > 0 ? r2(Math.min(G.start, 99)) : 0; o.rs = NET.rs;
+    o.it = G.items.map(it => [Math.round(it.x * 10), Math.round(it.y * 10)]);
+    o.got = G.items.reduce((m, it, i) => m | (it.got ? 1 << i : 0), 0);
+    o.en = G.enemies.map(e => [r2(e.x), r2(e.y), r2(e.face.x), r2(e.face.y), e.state === 'chase' ? 1 : 0, e.target ? e.target.id : -1, e.moving ? 1 : 0]);
+    o.ps = {};
+    for (const p of G.players) if (p.peer) o.ps[p.peer] = [p.id, p.caught ? 1 : 0, p.safe ? 1 : 0, r2(p.x), r2(p.y)];
+    o.msg = [G.msgT > 0 ? G.msg : '', NET.msgId];
+  }
+  return o;
+}
+
+function netPublish() {
+  const me = G ? G.players.find(p => p.local) : null;
+  const pres = { k: NET.mode === 'host' ? 'h' : 'c', e: NET.ep };
+  if (me) { pres.x = r2(me.x); pres.y = r2(me.y); pres.a = r2(me.a); pres.h = me.hidden ? [me.hidden.c, me.hidden.r] : 0; pres.m = me.moving ? 1 : 0; }
+  if (NET.mode === 'host') pres.g = hostState();
+  try { const pr = NET.room.presence(pres); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* se reintenta en el siguiente fotograma */ }
+}
+
+/* lo que otro jugador dice de sí mismo no es de fiar: se comprueba antes de usarlo */
+function applyRemote(p, d) {
+  if (!d || !num(d.x) || !num(d.y)) return false;
+  const x = Math.max(0.3, Math.min(COLS - 0.3, d.x)), y = Math.max(0.3, Math.min(ROWS - 0.3, d.y));
+  if (G.m.grid[Math.floor(y)][Math.floor(x)] !== 0) return false;
+  p.tx = x; p.ty = y; if (num(d.a)) p.ta = d.a;
+  const h = d.h;
+  p.hidden = Array.isArray(h) && G.m.grid[h[1]] && G.m.grid[h[1]][h[0]] === 2 && Math.hypot(h[0] + 0.5 - x, h[1] + 0.5 - y) < 1.6 ? { c: h[0], r: h[1] } : null;
+  p.moving = !!d.m;
+  return true;
+}
+
+function hostSync(peers) {
+  if (NET.me) NET.slots[NET.me] = 0;
+  if (G) { const me = G.players.find(p => p.local); if (me) me.peer = NET.me; }
+  for (const pr of peers) {
+    if (pr.sameTab || pr.kind !== 'viewer') continue;
+    const d = pr.presence;
+    if (!d || d.k !== 'c') continue;
+    if (!(pr.peer in NET.slots)) {
+      const used = Object.values(NET.slots), free = [1, 2, 3].find(n => !used.includes(n));
+      if (free === undefined) continue;                      // sala llena
+      NET.slots[pr.peer] = free;
+    }
+    if (!G) continue;
+    let p = G.players.find(q => q.peer === pr.peer);
+    if (!p) { p = addRemotePlayer(pr.peer, NET.slots[pr.peer]); p.inv = 2.5; }
+    p.away = d.e !== NET.ep;
+    if (!p.away && !p.caught && !p.safe) { if (!applyRemote(p, d)) p.away = !num(d.x); }
+  }
+  for (const peer of Object.keys(NET.slots)) {
+    if (peer === NET.me || peers.some(pr => pr.peer === peer)) continue;
+    delete NET.slots[peer];
+    if (G) removePlayer(peer);
+  }
+}
+
+function waitScreen(html) {
+  S.screen = 'wait';
+  showOverlay(`${html}<div class="row"><button id="lv">Salir de la sala</button></div>`);
+  document.getElementById('lv').onclick = netLeave;
+}
+
+function clientSync(peers, dt) {
+  const hp = peers.find(pr => !pr.sameTab && pr.kind === 'viewer' && pr.presence && pr.presence.k === 'h' && pr.presence.g);
+  if (!hp) {
+    if (!NET.lostAt) NET.lostAt = performance.now();
+    NET.noHost = (performance.now() - NET.lostAt) / 1000;      // tiempo real, no depende de los fotogramas
+    if (NET.hadHost && NET.noHost > 5 && NET.shown !== 'gone') {
+      NET.shown = 'gone'; G = null; disposeScene(); drawHud();
+      waitScreen(`<h2>La sala se ha cerrado</h2><p>Quien creó la sala ha salido o ha perdido la conexión.</p>`);
+    }
+    return;
+  }
+  NET.hadHost = true; NET.noHost = 0; NET.lostAt = 0;
+  const g = hp.presence.g;
+  NET.hostSlots = g.sl && typeof g.sl === 'object' ? g.sl : {};
+  const slot = NET.me ? NET.hostSlots[NET.me] : undefined;
+  S.diff = g.df === 'normal' ? 'normal' : 'facil';
+  const ok = num(slot) && CHARS[slot];
+  if (g.st === 'play' && ok && num(g.ph) && PHASES[g.ph] && Array.isArray(g.it) && g.it.length <= 20) {
+    if (g.ep !== NET.ep || !G) {
+      NET.ep = g.ep; NET.rs = g.rs; NET.shown = '';
+      startPhase(g.ph, { slot, items: g.it.filter(q => Array.isArray(q) && num(q[0]) && num(q[1])) });
+    }
+    applyGame(g, peers);
+    return;
+  }
+  const key = (ok ? g.st : 'full') + ':' + g.ep;
+  if (NET.shown === key) return;
+  NET.shown = key;
+  if (!ok && g.st === 'play') { G = null; disposeScene(); drawHud(); waitScreen(`<h2>Sala llena</h2><p>Ya hay 4 jugadores en esta partida. Podrás entrar cuando alguien salga.</p>`); return; }
+  if (g.st === 'lobby') { G = null; disposeScene(); showLobby(); }
+  else if (g.st === 'done') waitScreen(`<h2>🎉 ¡Fase superada!</h2><p>Esperando a que quien ha creado la sala pase a la siguiente fase…</p>`);
+  else if (g.st === 'over') waitScreen(`<h2>😱 ¡Se acabaron las vidas!</h2><p>Esperando a que quien ha creado la sala lo reintente…</p>`);
+  else if (g.st === 'win') waitScreen(`<h1>🏆 ¡Habéis escapado del parque!</h1><p>Nico, Lola, Max y Bea han escapado del Plátano, el Pimiento, la Fresa y la Patata.</p>`);
+  if (g.st === 'done' || g.st === 'win') SFX.win(); else if (g.st === 'over') SFX.lose();
+}
+
+/* el jugador invitado copia el estado de la partida que publica quien creó la sala */
+function applyGame(g, peers) {
+  const me = G.players.find(p => p.local);
+  me.peer = NET.me;
+  G.items.forEach((it, i) => { const got = !!(g.got >> i & 1); if (got && !it.got) SFX.collect(); it.got = got; });
+  G.collected = G.items.filter(it => it.got).length;
+  if (g.op && !G.open) SFX.open();
+  G.open = !!g.op;
+  if (num(g.lv)) G.lives = g.lv;
+  G.start = num(g.cd) ? g.cd : 0;
+  if (Array.isArray(g.msg) && g.msg[1] !== NET.lastMsg) { NET.lastMsg = g.msg[1]; if (g.msg[0]) { G.msg = String(g.msg[0]).slice(0, 120); G.msgT = 2.5; } }
+  if (Array.isArray(g.en)) g.en.forEach((d, i) => {
+    const e = G.enemies[i];
+    if (!e || !Array.isArray(d) || !num(d[0]) || !num(d[1])) return;
+    if (!num(e.tx)) { e.x = d[0]; e.y = d[1]; }
+    e.tx = d[0]; e.ty = d[1];
+    if (num(d[2]) && num(d[3]) && (d[2] || d[3])) e.face = { x: d[2], y: d[3] };
+    e.state = d[4] ? 'chase' : 'patrol'; e.target = G.players.find(p => p.id === d[5]) || null; e.moving = !!d[6];
+  });
+  const ps = g.ps && typeof g.ps === 'object' ? g.ps : {};
+  for (const peer of Object.keys(ps)) {
+    const v = ps[peer];
+    if (!Array.isArray(v) || !CHARS[v[0]]) continue;
+    if (peer === NET.me) {
+      const was = me.caught;
+      me.caught = !!v[1]; me.safe = !!v[2];
+      if (me.caught) { if (num(v[3]) && num(v[4])) { me.x = v[3]; me.y = v[4]; } me.hidden = null; if (!was) { me.flash = 0.6; SFX.caught(); } }
+      else if (was) SFX.rescue();
+      continue;
+    }
+    let p = G.players.find(q => q.peer === peer);
+    if (!p) p = addRemotePlayer(peer, v[0]);
+    p.caught = !!v[1]; p.safe = !!v[2];
+    const pr = peers.find(q => q.peer === peer);
+    if (p.caught || !pr || !applyRemote(p, pr.presence)) { if (num(v[3]) && num(v[4])) { p.tx = v[3]; p.ty = v[4]; } if (p.caught) p.hidden = null; }
+  }
+  for (const p of G.players.slice()) if (!p.local && !(p.peer in ps)) removePlayer(p.peer);
+  if (num(g.rs) && g.rs !== NET.rs) {            // se ha perdido una vida: todos vuelven al principio
+    NET.rs = g.rs;
+    const sp = G.m.spawns[me.id % G.m.spawns.length];
+    me.x = sp.c + 0.5; me.y = sp.r + 0.5; me.a = SPAWN_ANGLE; me.hidden = null; me.flash = 0.6; me.prevAct = true;
+  }
+}
+
+function netTick(dt) {
+  if (!NET.room) return;
+  let peers;
+  try { peers = NET.room.peers(); } catch (e) { return; }
+  const mine = peers.find(p => p.sameTab);
+  if (mine) NET.me = mine.peer;
+  if (NET.mode === 'host') hostSync(peers); else clientSync(peers, dt);
+  if (NET.room) netPublish();
+  if (S.screen === 'lobby') { NET.lobbyT -= dt; if (NET.lobbyT <= 0) { NET.lobbyT = 0.5; refreshLobby(); } }
+}
 
 /* ---------- bucle ---------- */
 let last = performance.now();
@@ -1286,6 +1579,7 @@ let padPrev = false;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  if (NET.mode !== 'off') netTick(dt);
   if (S.screen === 'play' && G) update(dt);
   else if (G) G.hudT = 0;
   // botón A / Start del mando en pantallas de menú
@@ -1301,7 +1595,7 @@ function loop(now) {
 }
 
 /* ---------- utilidades de prueba ---------- */
-window.__parque = { S, PHASES, parseMap, bfs, startPhase, get G() { return G; }, get GLOK() { return GLOK; } };
+window.__parque = { S, NET, PHASES, parseMap, bfs, startPhase, get G() { return G; }, get GLOK() { return GLOK; } };
 
 resize();
 drawHud();
