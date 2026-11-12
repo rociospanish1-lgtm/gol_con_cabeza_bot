@@ -66,10 +66,10 @@ const CHARS = [
 
 /* Los villanos */
 const VILLAINS = {
-  platano:  { name: 'Plátano',  art: 'el', color: '#ffd93b', speed: 1.0,  chase: 1.0,  sight: 1.0,  eyeY: -0.14, eyeDX: 0.1,  desc: 'Patrulla sin parar.' },
-  pimiento: { name: 'Pimiento', art: 'el', color: '#3fae3a', speed: 1.12, chase: 1.12, sight: 0.8,  eyeY: -0.06, eyeDX: 0.12, desc: 'Muy rápido, pero ve poco.' },
-  fresa:    { name: 'Fresa',    art: 'la', color: '#e8323c', speed: 0.9,  chase: 0.92, sight: 1.35, eyeY: -0.08, eyeDX: 0.13, desc: 'Lenta, pero te ve desde muy lejos.' },
-  patata:   { name: 'Patata',   art: 'la', color: '#c8995b', speed: 0.8,  chase: 1.08, sight: 1.0,  eyeY: -0.1,  eyeDX: 0.13, desc: 'Pasea despacio y acelera cuando te ve.' },
+  platano:  { name: 'Plátano',  art: 'el', color: '#ffd93b', speed: 1.0,  chase: 1.0,  sight: 1.0,  eyeY: -0.14, eyeDX: 0.105, eyeR: 0.095, armX: 0.2,  desc: 'Patrulla sin parar.' },
+  pimiento: { name: 'Pimiento', art: 'el', color: '#3fae3a', speed: 1.12, chase: 1.12, sight: 0.8,  eyeY: -0.04, eyeDX: 0.13, eyeR: 0.11, armX: 0.3,  desc: 'Muy rápido, pero ve poco.' },
+  fresa:    { name: 'Fresa',    art: 'la', color: '#e8323c', speed: 0.9,  chase: 0.92, sight: 1.35, eyeY: -0.07, eyeDX: 0.14, eyeR: 0.11, armX: 0.33, desc: 'Lenta, pero te ve desde muy lejos.' },
+  patata:   { name: 'Patata',   art: 'la', color: '#c8995b', speed: 0.8,  chase: 1.08, sight: 1.0,  eyeY: -0.09, eyeDX: 0.14, eyeR: 0.11, armX: 0.36, desc: 'Pasea despacio y acelera cuando te ve.' },
 };
 const VNAME = t => `${VILLAINS[t].art} ${VILLAINS[t].name}`;
 
@@ -726,7 +726,16 @@ function drawHero(c, idx, x, y, s, t, moving, face, alpha = 1, scared = false) {
   c.restore();
 }
 
-/* --- villanos --- */
+/* --- villanos: monstruos sencillos de brazos y piernas largos (diseños propios) --- */
+const VOFF = 0.22;   // cuánto sube el cuerpo sobre las piernas largas
+
+function noodle(c, s, color, x0, y0, cx, cy, x1, y1) {
+  c.lineCap = 'round';
+  const path = () => { c.beginPath(); c.moveTo(x0, y0); c.quadraticCurveTo(cx, cy, x1, y1); };
+  c.strokeStyle = OUT; c.lineWidth = s * 0.125; path(); c.stroke();
+  c.strokeStyle = color; c.lineWidth = s * 0.07; path(); c.stroke();
+}
+
 function villainBody(c, type, s) {
   c.strokeStyle = OUT; c.lineWidth = LW(s); c.lineJoin = 'round';
   if (type === 'platano') {
@@ -736,25 +745,16 @@ function villainBody(c, type, s) {
     c.bezierCurveTo(-s * 0.42, -s * 0.28, -s * 0.38, s * 0.3, s * 0.0, s * 0.42);
     c.bezierCurveTo(s * 0.32, s * 0.3, s * 0.34, -s * 0.22, s * 0.08, -s * 0.46);
     c.closePath(); c.fill(); c.stroke();
-    c.strokeStyle = '#d9a800'; c.lineWidth = LW(s) * 0.8;
-    c.beginPath(); c.moveTo(s * 0.12, -s * 0.36); c.quadraticCurveTo(s * 0.26, 0, s * 0.08, s * 0.34); c.stroke();
-    c.strokeStyle = OUT; c.lineWidth = LW(s);
     c.fillStyle = '#6b4a1e'; roundRect(c, -s * 0.04, -s * 0.58, s * 0.11, s * 0.15, s * 0.03); c.fill(); c.stroke();
-    c.fillStyle = '#4a3212'; c.beginPath(); c.arc(0, s * 0.41, s * 0.04, 0, 7); c.fill();
   } else if (type === 'pimiento') {
     const lobes = [[-0.16, 0.06], [0.16, 0.06], [0, 0.08]];
     c.fillStyle = '#3fae3a';
     c.lineWidth = LW(s) * 2;
     for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.2, s * 0.34, 0, 0, 7); c.stroke(); }
     for (const [ox, oy] of lobes) { c.beginPath(); c.ellipse(s * ox, s * oy, s * 0.2, s * 0.34, 0, 0, 7); c.fill(); }
-    c.strokeStyle = '#2b8a26'; c.lineWidth = LW(s) * 0.8;
-    for (const k of [-1, 1]) { c.beginPath(); c.moveTo(k * s * 0.07, -s * 0.18); c.quadraticCurveTo(k * s * 0.1, s * 0.1, k * s * 0.06, s * 0.36); c.stroke(); }
-    c.strokeStyle = OUT; c.lineWidth = LW(s);
-    c.fillStyle = '#2b7a24'; c.beginPath(); c.ellipse(0, -s * 0.27, s * 0.22, s * 0.08, 0, 0, 7); c.fill(); c.stroke();
-    c.lineWidth = s * 0.08; c.lineCap = 'round'; c.strokeStyle = OUT;
-    c.beginPath(); c.moveTo(0, -s * 0.3); c.quadraticCurveTo(s * 0.02, -s * 0.48, s * 0.15, -s * 0.52); c.stroke();
-    c.lineWidth = s * 0.05; c.strokeStyle = '#2e5e1a';
-    c.beginPath(); c.moveTo(0, -s * 0.3); c.quadraticCurveTo(s * 0.02, -s * 0.48, s * 0.15, -s * 0.52); c.stroke();
+    c.lineWidth = LW(s);
+    c.fillStyle = '#2b7a24'; c.beginPath(); c.ellipse(0, -s * 0.27, s * 0.2, s * 0.07, 0, 0, 7); c.fill(); c.stroke();
+    noodle(c, s * 0.7, '#2e5e1a', 0, -s * 0.3, s * 0.02, -s * 0.48, s * 0.15, -s * 0.52);
   } else if (type === 'fresa') {
     c.fillStyle = '#e8323c';
     c.beginPath();
@@ -763,8 +763,8 @@ function villainBody(c, type, s) {
     c.bezierCurveTo(s * 0.44, -s * 0.36, s * 0.5, s * 0.08, 0, s * 0.46);
     c.closePath(); c.fill(); c.stroke();
     c.fillStyle = '#ffe27a';
-    for (const [sx, sy] of [[-0.28, -0.12], [0.28, -0.12], [-0.3, 0.06], [0.3, 0.06], [-0.2, 0.22], [0.2, 0.22], [-0.08, 0.34], [0.08, 0.34]]) {
-      c.beginPath(); c.ellipse(s * sx, s * sy, s * 0.02, s * 0.032, 0, 0, 7); c.fill();
+    for (const [sx, sy] of [[-0.31, 0.1], [0.31, 0.1], [-0.18, 0.28], [0.18, 0.28], [0, 0.37]]) {
+      c.beginPath(); c.ellipse(s * sx, s * sy, s * 0.022, s * 0.034, 0, 0, 7); c.fill();
     }
     c.fillStyle = '#2f9a3a';
     c.beginPath();
@@ -774,7 +774,7 @@ function villainBody(c, type, s) {
       c.lineTo(Math.cos(a + Math.PI / 10) * s * 0.1, -s * 0.33 + Math.sin(a + Math.PI / 10) * s * 0.05);
     }
     c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#2f9a3a'; roundRect(c, -s * 0.025, -s * 0.5, s * 0.05, s * 0.16, s * 0.02); c.fill(); c.stroke();
+    roundRect(c, -s * 0.025, -s * 0.5, s * 0.05, s * 0.16, s * 0.02); c.fill(); c.stroke();
   } else {
     c.fillStyle = '#c8995b';
     c.beginPath();
@@ -785,61 +785,84 @@ function villainBody(c, type, s) {
     c.bezierCurveTo(-s * 0.42, s * 0.14, -s * 0.36, s * 0.04, -s * 0.38, -s * 0.06);
     c.closePath(); c.fill(); c.stroke();
     c.fillStyle = '#8a6235';
-    for (const [sx, sy, rr] of [[-0.26, -0.22, 0.035], [0.27, -0.2, 0.03], [0.3, 0.16, 0.035], [-0.28, 0.18, 0.03], [0.08, 0.33, 0.025]]) {
+    for (const [sx, sy, rr] of [[0.29, -0.24, 0.03], [0.31, 0.2, 0.035], [-0.29, 0.22, 0.03]]) {
       c.beginPath(); c.arc(s * sx, s * sy, s * rr, 0, 7); c.fill();
     }
-    c.fillStyle = '#5fbf4a';
-    c.beginPath(); c.ellipse(s * 0.12, -s * 0.44, s * 0.05, s * 0.1, 0.5, 0, 7); c.fill(); c.stroke();
   }
 }
 
 function villainFace(c, type, s, face, chasing) {
-  const v = VILLAINS[type], ey = v.eyeY * s, dx = v.eyeDX * s;
+  const v = VILLAINS[type], ey = v.eyeY * s, dx = v.eyeDX * s, r = v.eyeR * s;
   const fx = face ? face.x : 0, fy = face ? face.y : 0;
+  c.lineCap = 'round';
   for (const k of [-1, 1]) {
-    c.fillStyle = '#fff7d6'; c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.7;
-    c.beginPath(); c.ellipse(k * dx, ey, s * 0.075, s * 0.08, 0, 0, 7); c.fill(); c.stroke();
-    c.fillStyle = '#d01818'; c.beginPath(); c.arc(k * dx + fx * s * 0.025, ey + fy * s * 0.025, s * 0.035, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.8;
+    c.beginPath(); c.arc(k * dx, ey, r, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = OUT; c.beginPath(); c.arc(k * dx + fx * r * 0.38, ey + fy * r * 0.38, r * (chasing ? 0.38 : 0.5), 0, 7); c.fill();
   }
-  c.strokeStyle = OUT; c.lineWidth = LW(s) * 1.4; c.lineCap = 'round';
-  for (const k of [-1, 1]) {
-    c.beginPath(); c.moveTo(k * (dx + s * 0.09), ey - s * (chasing ? 0.14 : 0.12)); c.lineTo(k * (dx - s * 0.07), ey - s * 0.07); c.stroke();
-  }
-  const my = ey + s * 0.16, mw = s * (chasing ? 0.17 : 0.13), mh = s * (chasing ? 0.09 : 0.05);
-  c.fillStyle = '#3a0d12'; c.lineWidth = LW(s) * 0.8;
-  c.beginPath(); c.moveTo(-mw, my); c.quadraticCurveTo(0, my + mh * 2, mw, my); c.closePath(); c.fill(); c.stroke();
-  c.fillStyle = '#fff';
-  const n = 4, step = 2 * mw / n;
-  for (let i = 0; i < n; i++) {
-    const x0 = -mw + i * step;
-    c.beginPath(); c.moveTo(x0 + step * 0.1, my); c.lineTo(x0 + step * 0.9, my); c.lineTo(x0 + step / 2, my + mh * 0.75); c.closePath(); c.fill();
+  c.strokeStyle = OUT;
+  if (chasing) {
+    c.lineWidth = LW(s) * 1.4;
+    for (const k of [-1, 1]) { c.beginPath(); c.moveTo(k * (dx + r), ey - r * 1.35); c.lineTo(k * (dx - r * 0.7), ey - r * 0.75); c.stroke(); }
+    const my = ey + r + s * 0.05, mw = s * 0.15, mh = s * 0.09;
+    c.fillStyle = '#3a0d12'; c.lineWidth = LW(s) * 0.8;
+    c.beginPath(); c.moveTo(-mw, my); c.quadraticCurveTo(0, my + mh * 2, mw, my); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#fff';
+    const n = 4, step = 2 * mw / n;
+    for (let i = 0; i < n; i++) {
+      const x0 = -mw + i * step;
+      c.beginPath(); c.moveTo(x0 + step * 0.1, my); c.lineTo(x0 + step * 0.9, my); c.lineTo(x0 + step / 2, my + mh * 0.75); c.closePath(); c.fill();
+    }
+  } else {
+    c.lineWidth = LW(s);
+    c.beginPath(); c.arc(0, ey + r - s * 0.02, s * 0.11, 0.2 * Math.PI, 0.8 * Math.PI); c.stroke();
   }
 }
 
 function drawVillain(c, type, x, y, s, t, moving, chasing, face) {
+  const v = VILLAINS[type];
   c.save();
   c.translate(x, y);
-  c.fillStyle = 'rgba(0,0,0,.35)';
-  c.beginPath(); c.ellipse(0, s * 0.5, s * 0.3, s * 0.08, 0, 0, 7); c.fill();
-  c.translate(0, BOB(t, moving) * s - s * 0.08);
-  if (chasing) c.translate(Math.sin(t * 40) * s * 0.012, 0);
-  drawLegs(c, s, t, moving, 0.36, 0.13);
-  drawArms(c, s, t, chasing, 0.3, 0.02);
+  c.lineJoin = 'round';
+  c.fillStyle = 'rgba(0,0,0,.3)';
+  c.beginPath(); c.ellipse(0, s * 0.47, s * 0.3, s * 0.07, 0, 0, 7); c.fill();
+  const bob = BOB(t, moving) * s;
+  // piernas largas
+  const hipY = (0.34 - VOFF) * s + bob, ph = moving ? Math.sin(t * 12) : 0;
+  for (const k of [-1, 1]) {
+    const lift = moving ? Math.max(0, k * ph) * s * 0.1 : 0;
+    const fx = k * s * 0.15 + (moving ? k * ph * s * 0.04 : 0), fy = s * 0.44 - lift;
+    noodle(c, s, v.color, k * s * 0.09, hipY, k * s * 0.22, (hipY + fy) / 2, fx, fy);
+    c.fillStyle = v.color; c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.8;
+    c.beginPath(); c.ellipse(fx + k * s * 0.04, fy, s * 0.085, s * 0.045, 0, 0, 7); c.fill(); c.stroke();
+  }
+  c.translate(chasing ? Math.sin(t * 40) * s * 0.012 : 0, -VOFF * s + bob);
+  // brazos largos
+  for (const k of [-1, 1]) {
+    const wav = Math.sin(t * (chasing ? 14 : 4) + k) * s * 0.035;
+    const sx = k * v.armX * s;
+    let hx, hy, cx, cy;
+    if (chasing) { hx = k * (v.armX + 0.3) * s; hy = -s * 0.44 + wav; cx = k * (v.armX + 0.34) * s; cy = -s * 0.02; }
+    else { hx = k * (v.armX + 0.15) * s + wav * 0.5; hy = s * 0.5 + wav; cx = k * (v.armX + 0.27) * s; cy = s * 0.14; }
+    noodle(c, s, v.color, sx, 0, cx, cy, hx, hy);
+    c.fillStyle = v.color; c.strokeStyle = OUT; c.lineWidth = LW(s) * 0.8;
+    c.beginPath(); c.arc(hx, hy, s * 0.065, 0, 7); c.fill(); c.stroke();
+  }
   villainBody(c, type, s);
   villainFace(c, type, s, face, chasing);
   c.restore();
 }
 
-/* ojos que brillan en la oscuridad */
+/* ojos que brillan en el modo noche */
 function drawVillainEyes(c, e, x, y, s) {
-  const v = VILLAINS[e.type];
-  const by = y + BOB(e.anim, e.moving) * s - s * 0.08 + v.eyeY * s;
+  const v = VILLAINS[e.type], r = v.eyeR * s;
+  const by = y + BOB(e.anim, e.moving) * s - VOFF * s + v.eyeY * s;
   const fx = e.face ? e.face.x : 0, fy = e.face ? e.face.y : 0;
   c.save();
   c.shadowColor = '#ff2a2a'; c.shadowBlur = s * (e.state === 'chase' ? 0.5 : 0.3);
   c.fillStyle = e.state === 'chase' ? '#ff3030' : '#ff6a6a';
   for (const k of [-1, 1]) {
-    c.beginPath(); c.arc(x + k * v.eyeDX * s + fx * s * 0.025, by + fy * s * 0.025, s * 0.04, 0, 7); c.fill();
+    c.beginPath(); c.arc(x + k * v.eyeDX * s + fx * r * 0.38, by + fy * r * 0.38, r * 0.45, 0, 7); c.fill();
   }
   c.restore();
 }
@@ -1076,7 +1099,7 @@ function preview(draw, size = 80) {
   return c;
 }
 const heroPreview = k => preview((x, z) => drawHero(x, k, z / 2, z * 0.52, z * 0.85, 1, false, { x: 0, y: 0.6 }));
-const villainPreview = (type, z = 80) => preview((x, zz) => drawVillain(x, type, zz / 2, zz * 0.5, zz * 0.72, 1, false, true, { x: 0, y: 0.6 }), z);
+const villainPreview = (type, z = 80) => preview((x, zz) => drawVillain(x, type, zz / 2, zz * 0.66, zz * 0.52, 1, false, false, { x: 0, y: 0.6 }), z);
 
 function showMenu() {
   S.screen = 'menu'; G = null; drawHud();
