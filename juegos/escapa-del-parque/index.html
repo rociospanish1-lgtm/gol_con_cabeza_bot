@@ -1256,7 +1256,7 @@ function showMenu() {
     <div class="row"><button class="big" data-primary id="go">¡Jugar!</button></div>
     <div class="row"><span class="lbl">Con amigos en línea:</span>${NET.api
       ? `<button id="mk">Crear sala</button><input id="code" maxlength="4" placeholder="CÓDIGO" autocomplete="off" style="font:inherit;font-size:16px;width:96px;padding:9px;border-radius:12px;border:2px solid #4b4b85;background:#101024;color:#fff;text-align:center;text-transform:uppercase"><button id="jn">Unirse a una sala</button>`
-      : `<small>Disponible cuando abrís todos el juego desde su enlace de Claude.</small>`}</div>
+      : `<small>Preparando el juego en línea…</small>`}</div>
     ${NET.err ? `<p style="color:#ff8a8a">${NET.err}</p>` : ''}
     <small>Con varios jugadores la pantalla se divide. Mandos: palanca para andar y girar, botón A para esconderse. En móvil o tablet: joystick y botón, un jugador. En el ordenador, el jugador 1 usa las flechas y la barra espaciadora. Pausa: Esc o P.</small>
   `);
@@ -1348,29 +1348,115 @@ window.pauseGame = pauseGame;
    Cada jugador mueve a su explorador en su dispositivo y publica dónde está.
    Quien crea la sala mueve a los villanos y decide qué se recoge y a quién pillan.
    ========================================================= */
-const NET = { api: null, room: null, mode: 'off', code: '', me: null, slots: {}, hostSlots: {}, ep: 0, rs: 0, msgId: 0, lastMsg: 0, shown: '', hadHost: false, noHost: 0, lobbyT: 0, lobbySig: '', err: '' };
+const NET = { api: null, web: false, room: null, mode: 'off', code: '', me: null, slots: {}, hostSlots: {}, ep: 0, rs: 0, msgId: 0, lastMsg: 0, shown: '', hadHost: false, noHost: 0, lobbyT: 0, lobbySig: '', err: '' };
 const r2 = v => Math.round(v * 100) / 100;
 const num = v => typeof v === 'number' && isFinite(v);
 const randomCode = () => Array.from({ length: 4 }, () => 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)]).join('');
 
+/* Sala directa entre dispositivos (cuando el juego no se abre desde Claude).
+   El anfitrión recibe las conexiones de los demás y reparte la posición de todos. */
+function loadScript(src) {
+  return new Promise((ok, ko) => { const e = document.createElement('script'); e.src = src; e.onload = ok; e.onerror = () => ko(new Error('no carga ' + src)); document.head.appendChild(e); });
+}
+function makeWebApi() {
+  const me = 'u' + Math.random().toString(36).slice(2, 10);
+  const OPT = () => window.__peerOptions || {};
+  return {
+    async join(name, asHost) {
+      await loadScript('peerjs.min.js');
+      const hostId = 'escapa-parque-' + name.replace(/[^a-z0-9]/g, '');
+      let pres = {}, others = {}, closed = false, dirty = true;
+      const links = new Map();                       // anfitrión: conexiones con cada jugador
+      let hostConn = null, lastAll = 0;
+      const peer = new Peer(asHost ? hostId : undefined, Object.assign({ debug: 0 }, OPT()));
+      const room = {
+        name,
+        presence(patch) { pres = Object.assign({}, pres, patch); dirty = true; return Promise.resolve(); },
+        peers() {
+          const t = Date.now();
+          return [{ peer: me, by: null, isMe: true, sameTab: true, kind: 'viewer', guest: false, presence: pres, updatedAt: t }]
+            .concat(Object.keys(others).map(k => ({ peer: k, by: null, isMe: false, sameTab: false, kind: 'viewer', guest: false, presence: others[k].presence, updatedAt: others[k].t })));
+        },
+        leave() { closed = true; clearInterval(timer); try { peer.destroy(); } catch (e) { /* ya cerrada */ } return Promise.resolve(); },
+      };
+      const ok = v => v && typeof v === 'object' && !Array.isArray(v);
+      const send = (c, m) => { try { if (c.open) c.send(m); } catch (e) { /* se reintenta */ } };
+      const timer = setInterval(() => {
+        if (closed) return;
+        const t = Date.now();
+        if (asHost) {
+          const list = [{ id: me, p: pres }].concat(Object.keys(others).map(k => ({ id: k, p: others[k].presence })));
+          for (const c of links.values()) send(c, { t: 'all', list });
+          for (const k of Object.keys(others)) if (t - others[k].t > 4000) { delete others[k]; for (const [lid, c] of links) if (lid === k) { links.delete(lid); try { c.close(); } catch (e) { /* ya cerrada */ } } }
+        } else if (hostConn) {
+          send(hostConn, { t: 'p', id: me, p: pres });
+          if (t - lastAll > 4000) others = {};          // el anfitrión no da señales: se ha ido
+        }
+        dirty = false;
+      }, 50);
+      await new Promise((resolve, reject) => {
+        const fail = m => reject(new Error(m));
+        const to = setTimeout(() => fail('tiempo agotado'), 12000);
+        peer.on('error', e => { clearTimeout(to); fail(e && e.type ? e.type : 'error'); });
+        if (asHost) {
+          peer.on('open', () => { clearTimeout(to); resolve(); });
+          peer.on('connection', c => {
+            let id = null;
+            c.on('data', m => {
+              if (!m || m.t !== 'p' || typeof m.id !== 'string' || !ok(m.p) || m.id === me) return;
+              if (!id) { id = m.id; links.set(id, c); }
+              others[m.id] = { presence: m.p, t: Date.now() };
+            });
+            c.on('close', () => { if (id) { links.delete(id); delete others[id]; } });
+          });
+        } else {
+          peer.on('open', () => {
+            const c = peer.connect(hostId, { serialization: 'json', reliable: true });
+            c.on('open', () => { clearTimeout(to); hostConn = c; lastAll = Date.now(); resolve(); });
+            c.on('data', m => {
+              if (!m || m.t !== 'all' || !Array.isArray(m.list)) return;
+              const next = {}, t = Date.now();
+              for (const e of m.list.slice(0, 8)) if (e && typeof e.id === 'string' && e.id !== me && ok(e.p)) next[e.id] = { presence: e.p, t };
+              others = next; lastAll = Date.now();
+            });
+            c.on('close', () => { hostConn = null; others = {}; });
+          });
+        }
+      });
+      peer.on('error', () => { /* los fallos de una conexión suelta no cierran la sala */ });
+      return room;
+    },
+  };
+}
+
 (async function netInit() {
   const has = () => window.claude && typeof window.claude.use === 'function';
-  for (let k = 0; k < 20 && !has(); k++) await new Promise(r => setTimeout(r, 250));
-  if (!has()) return;
+  for (let k = 0; k < 12 && !has(); k++) await new Promise(r => setTimeout(r, 250));
   try {
-    const api = await window.claude.use('room');
-    if (api) { NET.api = api; if (S.screen === 'menu') showMenu(); }
+    if (has()) {
+      const api = await window.claude.use('room');
+      if (api) { NET.api = api; if (S.screen === 'menu') showMenu(); }
+    } else {
+      NET.api = makeWebApi(); NET.web = true;
+      if (S.screen === 'menu') showMenu();
+    }
   } catch (e) { /* sin sala: el juego funciona igual en local */ }
 })();
 
 async function netJoin(code, asHost) {
   try {
-    const room = await NET.api.join('parque-' + code);
+    const room = NET.web ? await NET.api.join('parque-' + code, asHost) : await NET.api.join('parque-' + code);
     Object.assign(NET, { room, mode: asHost ? 'host' : 'client', code, slots: {}, hostSlots: {}, ep: asHost ? 0 : -1, rs: 0, shown: '', hadHost: false, noHost: 0, lostAt: 0, me: null, err: '', lobbySig: '' });
     G = null; disposeScene();
     showLobby();
   } catch (e) {
-    NET.err = 'No se ha podido entrar en la sala. Comprueba que os han invitado al juego con permiso para participar.';
+    const why = String((e && e.message) || '');
+    NET.err = NET.web
+      ? (asHost && /unavailable-id/.test(why) ? 'Ese código ya está en uso. Pulsa «Crear sala» otra vez.'
+        : asHost ? 'No se ha podido crear la sala. Comprueba tu conexión e inténtalo de nuevo.'
+        : /peer-unavailable|tiempo/.test(why) ? 'No encuentro esa sala. Comprueba el código con quien la ha creado.'
+        : 'No se ha podido entrar en la sala. Comprueba tu conexión e inténtalo de nuevo.')
+      : 'No se ha podido entrar en la sala. Comprueba que os han invitado al juego con permiso para participar.';
     showMenu();
   }
 }
@@ -1390,7 +1476,7 @@ function showLobby() {
     : `<button disabled style="opacity:.4">🔒 ${i + 1}</button>`).join('');
   showOverlay(`
     <h2>🎮 Sala <span style="letter-spacing:5px;color:#f4c430">${NET.code.toUpperCase()}</span></h2>
-    ${host ? `<p>Dile este código a tus amigos. Tienen que abrir este mismo juego, escribir el código y pulsar «Unirse a una sala». Caben 4 jugadores.</p>`
+    ${host ? `<p>Dile este código a tus amigos. Tienen que abrir ${NET.web ? '<b>' + location.host + '</b>' : 'este mismo juego'}, escribir el código y pulsar «Unirse a una sala». Caben 4 jugadores.</p>`
            : `<p>Esperando a que quien ha creado la sala empiece la partida…</p>`}
     <div class="cards" id="plist"></div>
     ${host ? `<div class="row"><span class="lbl">Fase:</span>${phases}</div>
@@ -1487,7 +1573,7 @@ function clientSync(peers, dt) {
   if (!hp) {
     if (!NET.lostAt) NET.lostAt = performance.now();
     NET.noHost = (performance.now() - NET.lostAt) / 1000;      // tiempo real, no depende de los fotogramas
-    if (NET.hadHost && NET.noHost > 5 && NET.shown !== 'gone') {
+    if (NET.hadHost && NET.noHost > 2 && NET.shown !== 'gone') {
       NET.shown = 'gone'; G = null; disposeScene(); drawHud();
       waitScreen(`<h2>La sala se ha cerrado</h2><p>Quien creó la sala ha salido o ha perdido la conexión.</p>`);
     }
