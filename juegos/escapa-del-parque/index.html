@@ -1266,11 +1266,12 @@ function showMenu() {
   document.getElementById('dk').onclick = () => { S.dark = !S.dark; showMenu(); };
   document.getElementById('go').onclick = () => { audio(); showIntro(S.startPhase); };
   if (NET.api) {
-    document.getElementById('mk').onclick = () => { audio(); netJoin(randomCode(), true); };
+    document.getElementById('mk').onclick = () => { audio(); document.getElementById('mk').textContent = 'Creando sala…'; netJoin(randomCode(), true); };
     document.getElementById('jn').onclick = () => {
       audio();
       const code = document.getElementById('code').value.trim().toLowerCase();
       if (!/^[a-z0-9]{3,6}$/.test(code)) { NET.err = 'Escribe el código de la sala (4 letras).'; showMenu(); return; }
+      document.getElementById('jn').textContent = 'Entrando…';
       netJoin(code, false);
     };
   }
@@ -1377,8 +1378,15 @@ function makeWebApi() {
           return [{ peer: me, by: null, isMe: true, sameTab: true, kind: 'viewer', guest: false, presence: pres, updatedAt: t }]
             .concat(Object.keys(others).map(k => ({ peer: k, by: null, isMe: false, sameTab: false, kind: 'viewer', guest: false, presence: others[k].presence, updatedAt: others[k].t })));
         },
-        leave() { closed = true; clearInterval(timer); try { peer.destroy(); } catch (e) { /* ya cerrada */ } return Promise.resolve(); },
+        online() { return !!peer.open && !peer.disconnected && !peer.destroyed; },
+        peerObj: peer,
+        leave() { closed = true; clearInterval(timer); clearInterval(reviver); document.removeEventListener('visibilitychange', onVis); try { peer.destroy(); } catch (e) { /* ya cerrada */ } return Promise.resolve(); },
       };
+      /* si el móvil apaga la pantalla o cambias de aplicación, el servidor de salas pierde a quien creó la sala: se vuelve a conectar solo */
+      const reviveSock = () => { if (!closed && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch (e) { /* se reintenta */ } } };
+      const onVis = () => { if (document.visibilityState === 'visible') reviveSock(); };
+      document.addEventListener('visibilitychange', onVis);
+      const reviver = setInterval(reviveSock, 2500);
       const ok = v => v && typeof v === 'object' && !Array.isArray(v);
       const send = (c, m) => { try { if (c.open) c.send(m); } catch (e) { /* se reintenta */ } };
       const timer = setInterval(() => {
@@ -1396,7 +1404,8 @@ function makeWebApi() {
       }, 50);
       await new Promise((resolve, reject) => {
         const fail = m => reject(new Error(m));
-        const to = setTimeout(() => fail('tiempo agotado'), 12000);
+        let stage = 'signal';
+        const to = setTimeout(() => fail(stage === 'dial' ? 'webrtc-timeout' : 'signal-timeout'), 15000);
         peer.on('error', e => { clearTimeout(to); fail(e && e.type ? e.type : 'error'); });
         if (asHost) {
           peer.on('open', () => { clearTimeout(to); resolve(); });
@@ -1411,6 +1420,7 @@ function makeWebApi() {
           });
         } else {
           peer.on('open', () => {
+            stage = 'dial';
             const c = peer.connect(hostId, { serialization: 'json', reliable: true });
             c.on('open', () => { clearTimeout(to); hostConn = c; lastAll = Date.now(); resolve(); });
             c.on('data', m => {
@@ -1443,19 +1453,29 @@ function makeWebApi() {
   } catch (e) { /* sin sala: el juego funciona igual en local */ }
 })();
 
+async function keepAwake() {
+  try { if (navigator.wakeLock && NET.mode !== 'off' && document.visibilityState === 'visible') NET.wl = await navigator.wakeLock.request('screen'); } catch (e) { /* no disponible */ }
+}
+document.addEventListener('visibilitychange', () => { if (NET.mode !== 'off') keepAwake(); });
+
 async function netJoin(code, asHost) {
   try {
     const room = NET.web ? await NET.api.join('parque-' + code, asHost) : await NET.api.join('parque-' + code);
     Object.assign(NET, { room, mode: asHost ? 'host' : 'client', code, slots: {}, hostSlots: {}, ep: asHost ? 0 : -1, rs: 0, shown: '', hadHost: false, noHost: 0, lostAt: 0, me: null, err: '', lobbySig: '' });
     G = null; disposeScene();
+    keepAwake();
     showLobby();
   } catch (e) {
     const why = String((e && e.message) || '');
+    const tech = ` (código técnico: ${why.slice(0, 40) || 'desconocido'})`;
     NET.err = NET.web
       ? (asHost && /unavailable-id/.test(why) ? 'Ese código ya está en uso. Pulsa «Crear sala» otra vez.'
-        : asHost ? 'No se ha podido crear la sala. Comprueba tu conexión e inténtalo de nuevo.'
-        : /peer-unavailable|tiempo/.test(why) ? 'No encuentro esa sala. Comprueba el código con quien la ha creado.'
-        : 'No se ha podido entrar en la sala. Comprueba tu conexión e inténtalo de nuevo.')
+        : asHost && /network|server-error|socket|signal-timeout/.test(why) ? 'No consigo conectar con el servidor de salas. Comprueba tu internet e inténtalo de nuevo.' + tech
+        : asHost ? 'No se ha podido crear la sala. Inténtalo de nuevo.' + tech
+        : /peer-unavailable/.test(why) ? 'No encuentro esa sala. Comprueba el código y que quien la creó sigue en la pantalla de la sala (sin salir del juego ni apagar la pantalla). Tienen que usar la misma dirección web.' + tech
+        : /webrtc-timeout/.test(why) ? 'He encontrado la sala, pero no consigo conectar con el dispositivo de quien la creó. Suele pasar por la red (datos móviles o wifi de empresa): probad los dos con la misma wifi.' + tech
+        : /network|server-error|socket|signal-timeout/.test(why) ? 'No consigo conectar con el servidor de salas. Comprueba tu internet e inténtalo de nuevo.' + tech
+        : 'No se ha podido entrar en la sala. Inténtalo de nuevo.' + tech)
       : 'No se ha podido entrar en la sala. Comprueba que os han invitado al juego con permiso para participar.';
     showMenu();
   }
@@ -1478,6 +1498,7 @@ function showLobby() {
     <h2>🎮 Sala <span style="letter-spacing:5px;color:#f4c430">${NET.code.toUpperCase()}</span></h2>
     ${host ? `<p>Dile este código a tus amigos. Tienen que abrir ${NET.web ? '<b>' + location.host + '</b>' : 'este mismo juego'}, escribir el código y pulsar «Unirse a una sala». Caben 4 jugadores.</p>`
            : `<p>Esperando a que quien ha creado la sala empiece la partida…</p>`}
+    <p id="netstat" style="font-weight:700"></p>
     <div class="cards" id="plist"></div>
     ${host ? `<div class="row"><span class="lbl">Fase:</span>${phases}</div>
     <div class="row"><span class="lbl">Dificultad:</span><button data-df="facil" class="${S.diff === 'facil' ? 'sel' : ''}">Fácil · 5 ❤️</button><button data-df="normal" class="${S.diff === 'normal' ? 'sel' : ''}">Normal · 3 ❤️</button></div>
@@ -1488,7 +1509,17 @@ function showLobby() {
   overlay.querySelectorAll('[data-df]').forEach(b => b.onclick = () => { S.diff = b.dataset.df; showLobby(); });
   if (host) document.getElementById('go').onclick = () => { audio(); startPhase(S.startPhase); };
   document.getElementById('lv').onclick = netLeave;
-  NET.lobbySig = ''; refreshLobby();
+  NET.lobbySig = ''; refreshLobby(); updateNetStat();
+}
+function updateNetStat() {
+  const el = document.getElementById('netstat'); if (!el || !NET.room) return;
+  if (NET.web && typeof NET.room.online === 'function') {
+    const on = NET.room.online();
+    el.style.color = on ? '#8dffa6' : '#ff8a8a';
+    el.textContent = NET.mode === 'host'
+      ? (on ? '🟢 Sala abierta. No salgas de esta pantalla ni apagues la pantalla mientras entran tus amigos.' : '🔴 Sin conexión con el servidor de salas. Reconectando… Si no vuelve, comprueba tu internet.')
+      : (on ? '🟢 Conectado a la sala.' : '🔴 Sin conexión. Reconectando…');
+  } else el.textContent = '';
 }
 function refreshLobby() {
   const el = document.getElementById('plist'); if (!el) return;
@@ -1656,7 +1687,7 @@ function netTick(dt) {
   if (mine) NET.me = mine.peer;
   if (NET.mode === 'host') hostSync(peers); else clientSync(peers, dt);
   if (NET.room) netPublish();
-  if (S.screen === 'lobby') { NET.lobbyT -= dt; if (NET.lobbyT <= 0) { NET.lobbyT = 0.5; refreshLobby(); } }
+  if (S.screen === 'lobby') { NET.lobbyT -= dt; if (NET.lobbyT <= 0) { NET.lobbyT = 0.5; refreshLobby(); updateNetStat(); } }
 }
 
 /* ---------- bucle ---------- */
