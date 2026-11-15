@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Avatar Studio</title>
+<style>
+:root{--bg:#0f0f14;--card:#1a1a23;--fg:#f3f3f7;--mut:#9a9aab;--ac:#ff6b9d;--ok:#4ade80}
+*{box-sizing:border-box}body{margin:0;font:16px system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+main{max-width:980px;margin:0 auto;padding:24px;display:grid;gap:20px;grid-template-columns:1fr 340px}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+h1{grid-column:1/-1;margin:0;font-size:1.5rem}
+.card{background:var(--card);border-radius:14px;padding:18px;display:grid;gap:12px;align-content:start}
+label{font-size:.85rem;color:var(--mut)}
+textarea,select,input[type=range]{width:100%}
+textarea,select{background:#0f0f14;color:var(--fg);border:1px solid #2c2c3a;border-radius:8px;padding:10px;font:inherit}
+textarea{min-height:170px;resize:vertical}
+button{background:var(--ac);color:#111;border:0;border-radius:10px;padding:12px;font-weight:700;font-size:1rem;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+#drop{border:2px dashed #3a3a4c;border-radius:10px;padding:14px;text-align:center;cursor:pointer;color:var(--mut)}
+#drop img{max-height:150px;border-radius:8px}
+.stage{aspect-ratio:9/16;background:#000;border-radius:12px;display:grid;place-items:center;overflow:hidden;color:var(--mut);text-align:center;padding:10px}
+video{width:100%;height:100%}
+#msg{font-size:.9rem}.err{color:#ff7b7b}.warn{color:#fbbf24;font-size:.8rem}
+</style></head><body><main>
+<h1>Avatar Studio</h1>
+<form class="card" id="f">
+  <label>1 · Foto del avatar (cara de frente, buena luz)</label>
+  <div id="drop"><span>Pulsa para subir una imagen</span><input id="img" type="file" accept="image/*" hidden></div>
+  <label>2 · Guion <span id="cnt"></span></label>
+  <textarea id="text" placeholder="Escribe lo que dirá tu avatar…" required></textarea>
+  <label>3 · Voz</label><select id="voice"></select>
+  <label>Velocidad: <span id="sv">0</span>%</label>
+  <input id="speed" type="range" min="-30" max="30" value="0">
+  <button id="go">Generar vídeo</button>
+  <div id="msg"></div><div class="warn" id="warn"></div>
+</form>
+<div class="card"><label>Resultado (9:16)</label>
+  <div class="stage" id="stage">Aquí aparecerá tu vídeo</div>
+  <a id="dl" style="color:var(--ok);display:none" download>Descargar MP4</a></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);let file=null,max=1500;
+fetch('/api/config').then(r=>r.json()).then(c=>{
+  max=c.max_chars;for(const[k,v]of Object.entries(c.voices))$('voice').add(new Option(v,k));
+  if(!c.lipsync)$('warn').textContent='Modo local: el avatar no mueve los labios (solo zoom + voz + subtítulos). Configura DID_API_KEY para sincronía labial.';
+  cnt()});
+const cnt=()=>$('cnt').textContent=`(${$('text').value.length}/${max})`;
+$('text').oninput=cnt;$('speed').oninput=()=>$('sv').textContent=$('speed').value;
+$('drop').onclick=()=>$('img').click();
+$('img').onchange=e=>{file=e.target.files[0];if(!file)return;
+  $('drop').innerHTML=`<img src="${URL.createObjectURL(file)}">`};
+$('f').onsubmit=async e=>{e.preventDefault();
+  if(!file){$('msg').innerHTML='<span class=err>Sube una imagen</span>';return}
+  const fd=new FormData();fd.append('image',file);fd.append('text',$('text').value);
+  fd.append('voice',$('voice').value);fd.append('speed',$('speed').value);
+  $('go').disabled=true;$('dl').style.display='none';$('msg').textContent='Enviando…';
+  const r=await fetch('/api/videos',{method:'POST',body:fd});
+  if(!r.ok){$('msg').innerHTML=`<span class=err>${(await r.json()).detail}</span>`;$('go').disabled=false;return}
+  const {id}=await r.json();
+  const t=setInterval(async()=>{const s=await (await fetch('/api/videos/'+id)).json();
+    $('msg').textContent=s.step;
+    if(s.status==='done'){clearInterval(t);$('go').disabled=false;
+      $('stage').innerHTML=`<video src="${s.url}" controls autoplay></video>`;
+      $('dl').href=s.url;$('dl').style.display='block'}
+    if(s.status==='error'){clearInterval(t);$('go').disabled=false;
+      $('msg').innerHTML=`<span class=err>${s.error}</span>`}},1500)};
+</script></body></html>
