@@ -1,11 +1,13 @@
 """Avatar Studio: clon sencillo de un generador de vídeos con avatar hablando."""
+import base64
+import hmac
 import os
 import threading
 import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import pipeline as P
@@ -17,6 +19,26 @@ VIDEO = os.environ.get("VIDEO_PROVIDER", "did" if os.environ.get("DID_API_KEY") 
 MAX_CHARS, MAX_IMG = 1500, 8 * 1024 * 1024
 
 app = FastAPI(title="Avatar Studio")
+PASSWORD = os.environ.get("APP_PASSWORD", "")
+
+
+@app.middleware("http")
+async def basic_auth(request, call_next):
+    """Si APP_PASSWORD está definida, exige contraseña (usuario: cualquiera)."""
+    if PASSWORD:
+        ok = False
+        h = request.headers.get("authorization", "")
+        if h.lower().startswith("basic "):
+            try:
+                pwd = base64.b64decode(h[6:]).decode().partition(":")[2]
+                ok = hmac.compare_digest(pwd, PASSWORD)
+            except Exception:  # noqa: BLE001
+                pass
+        if not ok:
+            return Response("Acceso restringido", 401,
+                            headers={"WWW-Authenticate": 'Basic realm="Avatar Studio"'})
+    return await call_next(request)
+
 JOBS: dict[str, dict] = {}
 
 

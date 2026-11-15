@@ -22,3 +22,8 @@ Subes una foto, escribes el guion, eliges voz → vídeo MP4 vertical 9:16 con s
 ## Limitaciones
 - Los trabajos se guardan en memoria: reiniciar el servidor pierde el historial.
 - Sin autenticación ni límites por usuario: no exponer a internet tal cual.
+
+## Despliegue (Render u otro con Docker)
+- Servicio web tipo Docker, directorio raíz `avatar_studio`.
+- Variable `APP_PASSWORD`: si existe, el navegador pide contraseña (usuario: cualquiera).
+- Los vídeos se guardan en `/tmp`: se pierden al reiniciar. Descárgalos al generarlos.
