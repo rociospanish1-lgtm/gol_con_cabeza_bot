@@ -1,0 +1,23 @@
+{
+  "url": "https://ejemplo.invalid/reel/demo",
+  "plataforma": "Demo",
+  "titulo": "Tu clínica pierde 3 citas a la semana por esto",
+  "cuenta": "cuenta_demo",
+  "descripcion": "Comenta AGENDA y te lo enseño #clinicas #ia #automatizacion",
+  "hashtags": ["#clinicas", "#ia", "#automatizacion"],
+  "duracion_s": 30,
+  "visitas": 420000,
+  "likes": 18000,
+  "comentarios": 2300,
+  "seguidores": 12000,
+  "dias_publicado": 6,
+  "mediana_cuenta": 9000,
+  "transcripcion": "Tu clínica pierde dinero cada semana y no lo sabes. Un cliente escribe por WhatsApp a las diez de la noche y nadie contesta. Al día siguiente ya ha reservado en otra clínica. Un agente de IA contesta en segundos y agenda la cita. Mira cómo funciona. Comenta AGENDA y te lo enseño.",
+  "segmentos": [
+    {"start": 0.0, "text": "Tu clínica pierde dinero cada semana y no lo sabes."},
+    {"start": 4.0, "text": "Un cliente escribe por WhatsApp a las diez de la noche y nadie contesta."},
+    {"start": 12.0, "text": "Al día siguiente ya ha reservado en otra clínica."},
+    {"start": 20.0, "text": "Un agente de IA contesta en segundos y agenda la cita. Mira cómo funciona."},
+    {"start": 28.0, "text": "Comenta AGENDA y te lo enseño."}
+  ]
+}
