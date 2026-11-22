@@ -17,3 +17,11 @@ Rellenar y no tocar después (la consistencia depende de esto):
 - Ropa, peinado y fondo fijos: ______
 - Encuadre (plano medio, altura de cámara): ______
 - Prompt/semilla usada: ______
+
+## Datos confirmados en rociopinedaia.es (leídos de la web, 22 nov 2026)
+- La demo es la sección "Demo en vivo" (https://rociopinedaia.es/#demo). El agente se llama **Sara** ("Asistente IA de Rocío Pineda"). Es chat de texto con botón "Llamar a Sara (voz)". No hay avatar en vídeo.
+- Panel en vivo con 6 campos: Nombre, Clínica, Necesidad, Urgencia, Canal preferido, Contacto. Chips: "Pierdo citas por WhatsApp", "¿Cuánto cuesta?", "¿Cómo funciona?".
+- Foto de Sara: https://media.base44.com/images/public/6a8e8b317a25faffee9a92f6/4f38ca3d3_image.jpg
+- Foto de Rocío (fundadora): https://media.base44.com/images/public/6a8e8b317a25faffee9a92f6/337f1f0ae_Rocio_web_recorte.jpg
+- Cifras publicadas: demo "en 2 minutos", valoración gratuita de 20 min, implantación 5-10 días, WhatsApp facturado por Meta 20-70 €/mes, sin permanencia (30 días de aviso). No hay tiempo de respuesta publicado: medirlo en la demo antes de usarlo.
+- Pendiente: herramienta y ID del clon de vídeo de Rocío (la web no lo indica).
