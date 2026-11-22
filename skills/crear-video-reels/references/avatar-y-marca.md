@@ -15,7 +15,7 @@ Rellenar y no tocar después (la consistencia depende de esto):
 - Herramienta: Gemini (vídeo generado, archivo `gemini_generated_video_579DA8D7.mp4`, 10 s, 720x1280, 24 fps, con audio). ID: ______
 - ID de la voz: ______
 - Aspecto fijo (visto en el clip de referencia): mujer de unos 40-50 años, pelo largo castaño suelto con raya al lado, gafas de montura fina gris, pendientes largos finos, camisa blanca holgada con mangas remangadas, pulsera en la muñeca, pantalón oscuro, fondo pared blanca lisa y luminosa.
-- Encuadre: plano medio-corto vertical, cámara a la altura de los ojos, centrada, mirando a cámara, gesticula con la mano.
+- Encuadre (decidido por Rocío el 22 nov 2026): primer plano, cara y hombros, cámara a la altura de los ojos, centrada, mirando a cámara. El aspecto (pelo, gafas, pendientes, camisa blanca, fondo blanco) no cambia; solo el encuadre. El clip de referencia original estaba en plano medio-corto.
 - Prompt/semilla usada: ______
 
 ## Datos confirmados en rociopinedaia.es (leídos de la web, 22 nov 2026)
