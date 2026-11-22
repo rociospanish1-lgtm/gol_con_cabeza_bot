@@ -12,10 +12,10 @@ Rocío hablando a cámara o grabando el móvil: cercana, directa, español de Es
 
 ## Avatar / clon  — COMPLETAR UNA VEZ
 Rellenar y no tocar después (la consistencia depende de esto):
-- Herramienta y ID del avatar: ______
+- Herramienta: Gemini (vídeo generado, archivo `gemini_generated_video_579DA8D7.mp4`, 10 s, 720x1280, 24 fps, con audio). ID: ______
 - ID de la voz: ______
-- Ropa, peinado y fondo fijos: ______
-- Encuadre (plano medio, altura de cámara): ______
+- Aspecto fijo (visto en el clip de referencia): mujer de unos 40-50 años, pelo largo castaño suelto con raya al lado, gafas de montura fina gris, pendientes largos finos, camisa blanca holgada con mangas remangadas, pulsera en la muñeca, pantalón oscuro, fondo pared blanca lisa y luminosa.
+- Encuadre: plano medio-corto vertical, cámara a la altura de los ojos, centrada, mirando a cámara, gesticula con la mano.
 - Prompt/semilla usada: ______
 
 ## Datos confirmados en rociopinedaia.es (leídos de la web, 22 nov 2026)
