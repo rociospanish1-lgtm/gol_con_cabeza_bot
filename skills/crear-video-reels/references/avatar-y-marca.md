@@ -1,11 +1,14 @@
 # Avatar y marca (consistencia en todos los vídeos)
 
-## Paleta (web rociopinedaia.es)
-- Fondo azul noche #0A0F1E; brillos #1B2349 / #0E233C; red neuronal sutil.
-- Degradado de marca cian #22D3EE → violeta #8B5CF6 (palabra clave, botones, CTA).
-- Titulares blancos #FFFFFF, sans geométrica en negrita.
-- Texto secundario #A1A1AE. Etiquetas píldora cian #20C4DE. Texto sobre degradado #070B14.
-- Bordes muy redondeados, mucho espacio, ningún color fuera de la paleta.
+## Marca (medida en rociopinedaia.es renderizada, 23 nov 2026)
+Estilo editorial cálido, no tecnológico. Esto sustituye a la paleta azul noche + degradado cian→violeta, que no es la de la web actual.
+- Fondo crema #F7F1E9. Tarjetas blancas #FFFFFF. Chips y fondos suaves #E9DCC9, borde #D4C9B8 / #D9CDB8.
+- Texto y titulares marrón oscuro #3B2F2A. Texto secundario #8A7563.
+- Acento dorado #B8925A (botones, palabra clave, puntos de los chips); hover #A07E4A. Texto sobre dorado: blanco.
+- Titulares: Playfair Display 600 (serif). Cuerpo, botones y chips: Inter 400/500/600.
+- Formas: botones y chips totalmente redondeados (píldora), tarjetas con radio ~12 px, sin degradados ni sombras duras.
+- Reglas en vídeo: palabra clave del gancho en dorado #B8925A, nunca en otro color; subrayados o recuadros de énfasis en dorado; tachados de nombres ajenos en marrón #3B2F2A.
+- Fuentes descargables: fonts.googleapis.com (Playfair Display 600/700, Inter 400/500/600).
 
 ## Voz y personalidad
 Rocío hablando a cámara o grabando el móvil: cercana, directa, español de España, datos antes que adjetivos.

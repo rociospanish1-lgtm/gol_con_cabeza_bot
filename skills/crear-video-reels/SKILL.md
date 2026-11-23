@@ -1,6 +1,6 @@
 ---
 name: crear-video-reels
-description: "Produce el vídeo final de un reel/TikTok para la Agencia de Agentes IA de Rocío Pineda (clínicas de estética en Sevilla): guion hablado, escenas, avatar/clon idéntico, paleta de rociopinedaia.es, subtítulos, voz y exportación vertical 9:16. Úsalo siempre que Rocío pida crear, montar, generar o producir un vídeo, reel, TikTok o short, aunque no diga 'skill'; si solo pide ideas, usa ideas-reels-agentes-ia primero y luego esta."
+description: "Produce el vídeo final de un reel/TikTok para la Agencia de Agentes IA de Rocío Pineda (clínicas de estética en Sevilla): guion hablado, escenas, avatar/clon idéntico, paleta crema, marrón y dorado de rociopinedaia.es, subtítulos, voz y exportación vertical 9:16. Úsalo siempre que Rocío pida crear, montar, generar o producir un vídeo, reel, TikTok o short, aunque no diga 'skill'; si solo pide ideas, usa ideas-reels-agentes-ia primero y luego esta."
 ---
 
 # Crear vídeo (reel/TikTok) — Agencia de Agentes IA
@@ -14,7 +14,7 @@ Cada vídeo existe para generar conversaciones por DM con dueñas/os de clínica
 
 ## Flujo
 1. **Guion hablado** (español de España, directo, sin lenguaje de anuncio). Estructura: gancho 0-3 s con el nicho nombrado ("Si tienes una clínica de estética…") → un único beneficio medible → demo → CTA con palabra clave ("Comenta CITA"). Cifras concretas; si es dato de mercado, márcalo "verificar antes de publicar". Di "agente IA", nunca "bot". Sin jerga (n8n, API, LLM).
-2. **Plan de escenas**: tabla con segundo, qué se ve, voz, texto en pantalla (marca qué palabra lleva degradado). Máximo 1 cambio de plano cada 2-3 s.
+2. **Plan de escenas**: tabla con segundo, qué se ve, voz, texto en pantalla (marca qué palabra va en dorado). Máximo 1 cambio de plano cada 2-3 s.
 3. **Producción**. Elige la herramienta por este orden y no ofrezcas alternativas a Rocío, decide tú:
    - Avatar/clon hablando: el avatar guardado de Rocío (ver `references/avatar-y-marca.md`). Nunca cambies cara, ropa, fondo ni voz salvo que lo pida expresamente.
    - Composición con texto/gráficos de marca: HyperFrames (`compose`) o Canva (`create-video`), según cuál esté conectado.
@@ -28,7 +28,7 @@ Cada vídeo existe para generar conversaciones por DM con dueñas/os de clínica
 - Nicho nombrado en el primer segundo.
 - Un solo beneficio, con cifra.
 - Avatar idéntico al de vídeos anteriores.
-- Solo colores de la paleta; palabra clave del gancho con degradado cian→violeta.
+- Solo colores y fuentes de la web (crema #F7F1E9, marrón #3B2F2A, dorado #B8925A; Playfair Display + Inter); palabra clave del gancho en dorado.
 - Subtítulos legibles, dentro de la zona segura (deja libre ~15 % inferior y ~10 % superior).
 - 9:16, 15-35 s, CTA con palabra clave al final y en texto en pantalla.
 - Sin promesas médicas ni resultados estéticos garantizados; sin datos de clientas reales.
